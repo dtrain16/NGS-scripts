@@ -113,11 +113,11 @@ echo "single C bed file with depth > 3"
 ## depth filter on single Cs
 cd 5_output_files
 
-zcat ${fileID}_CG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+zcat ${fileID}_CG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
-zcat ${fileID}_CHG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CHG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+zcat ${fileID}_CHG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CHG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
-zcat ${fileID}_CHH.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CHH.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+zcat ${fileID}_CHH.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CHH.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 
@@ -260,9 +260,11 @@ mv 4_bismark_alignment/*.cov.gz 5_output_files
 echo "single C bed file with depth > 3"
 ## depth filter on single Cs
 cd 5_output_files
-                                                                                                              zcat ${fileID}_CG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-													      zcat ${fileID}_CHG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CHG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-													      zcat ${fileID}_CHH.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5 = ($5 + $6)}' | awk '{ if ($5 >= 3) { print } }' > ${fileID}_CHH.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+zcat ${fileID}_CG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+
+zcat ${fileID}_CHG.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CHG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+
+zcat ${fileID}_CHH.bed.gz.bismark.cov.gz | sort -k1,1 -k2,2n | awk -v OFS='\t' '{print $1,$2,$3,$4,$5,$6,$7 = ($5 + $6)}' | awk '{ if ($7 >= 3) { print } }' > ${fileID}_CHH.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 
