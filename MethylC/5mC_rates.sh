@@ -4,7 +4,7 @@ set -u
 
 # Get methylation rates for all contexts across Chr1-5 as well as % CHH in chloroplast genome as an indication of sodium bisulfite conversion efficiency (unconverted CHH in Cp and Mt genome)
 
-if [ "$#" -lt 1 ]; then
+if [ "$#" -lt 2 ]; then
 	echo "Missing required arguments!"
 	echo "USAGE: methylation_rates.sh <sample> <file>"
 	echo "EXAMPLE: methylation_rates.sh col0-r1 bed/cov"
@@ -14,9 +14,9 @@ fi
 sample=$1
 file=$2
 
-cg=${sample}*CG*.${file}
-chg=${sample}*CHG*.${file}
-chh=${sample}*CHH*.${file}
+cg="${sample}_CG*.${file}"
+chg="${sample}_CHG*.${file}"
+chh="${sample}_CHH*.${file}"
 
 echo "5mC % in $1"
 
