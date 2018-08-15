@@ -10,7 +10,7 @@ set -eu
 if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
 echo "USAGE: RNAseq_featureCounts.sh <filename> <SE/PE> <library strandedness> <rtd2 or padded>"
-echo "EXAMPLE: RNAseq_featureCounts.sh col0-r1.sorted.bam PE 1 "
+echo "EXAMPLE: RNAseq_featureCounts.sh col0-r1.bam PE 2 rtd2"
 echo "library strandedness: 0 = unstranded, 1 = stranded, 2 = reverse stranded"
 exit 1
 fi
@@ -22,12 +22,12 @@ ref=$4
 
 if [[ $ref == "rtd2" ]]; then
 	bedfile="$HOME/AtRTD2/AtRTD2_19April2016.gtf"
-	outname="RTD2.counts"
+	outname="${sample%%.bam*}_RTD2.counts"
 elif [[ $ref == "padded" ]]; then
 	bedfile="$HOME/AtRTD2/AtRTDv2_QUASI_19April2016.gtf"
-	outname="quasi.counts"
+	outname="${sample%%.bam*}_quasi.counts"
 else
-	echo "bad argument - pick 'rtd2' vs 'padded'"
+	echo " bad argument - pick 'rtd2' or 'padded' "
 	exit 1
 fi
 
@@ -42,35 +42,20 @@ echo ""
 
 if [[ $layout == "SE" ]]; then 
 
-featureCounts\
-	-F GTF\
-	-C\		# Do not count read pairs matching different chromosomes
-	-T 4\
-	-f\ 		# Perform read counting at feature level (eg. exons rather than genes).
-	-t exon\	# feature = exon
-	-g gene_id\
-	-O\     	# Reads assigned to multiple meta-features (exons)
-	-s $strand\
-	-a $bedfile\
-	-o "${1%%.bam*}_${outname}"\
-	$sample 2>&1 | tee -a ../*log
+featureCounts -F GTF -C -T 4 -f -t exon -g gene_id -O -s $strand -a $bedfile -o $outname $sample 2>&1 | tee -a ../*log
+	
 fi
 	
 if [[ $layout == "PE" ]]; then 
 
-featureCounts\
-	-F GTF\
-	-p\		# paired end
-	-C\		# Do not count read pairs matching different chromosomes
-	-T 4\
-	-f\		# Perform feature level counting
-	-t exon\	# feature = exon
-	-g gene_id\
-	-O\		# Reads assigned to multiple meta-features (exons)
-	-s $strand\
-	-a $bedfile\
-	-o "${1%%.bam*}_${outname}"\
-	$sample 2>&1 | tee -a ../*log
+featureCounts -F GTF -p	-C -T 4 -f -t exon -g gene_id -O -s $strand -a $bedfile -o $outname $sample 2>&1 | tee -a ../*log
+
 fi
+
+# -C - Do not count read pairs matching different chromosomes
+# -f - Perform read counting at feature level (e.g. exons vs genes)
+# -t - Specify meta-feature
+# -g - Specify attribute
+# -O - Keep reads assigned to multiple meta-features
 
 echo "DONE"

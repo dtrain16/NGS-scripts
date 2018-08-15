@@ -63,7 +63,7 @@ if [[ $format == "bed" ]]; then
 	
 	if [[ $layout == "SE" ]]; then 
 		featureCounts\
-			-F 'SAF'\
+			-F SAF\
 			-C\
 			-T 2\
 			-s $strand\
