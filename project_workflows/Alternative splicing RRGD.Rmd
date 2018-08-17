@@ -3,7 +3,7 @@ title: "Alternate splicing across EL and recovery"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE, echo=FALSE}
+```{r setup, include=FALSE}
 library(reshape2)
 library(tidyverse)
 library(limma)
@@ -11,6 +11,40 @@ library(edgeR)
 library(scatterplot3d)
 
 rrgd_dir <- "C:/Users/u4667515/Documents/Labwork/PostDoc_PEB/Experiments/2018/Alternative splicing exploration/RRGD_AS"
+
+## Output table
+getAttributeField <- function (x, field, attrsep = ";") {
+     s = strsplit(x, split = attrsep, fixed = TRUE)
+     sapply(s, function(atts) {
+         a = strsplit(atts, split = "=", fixed = TRUE)
+         m = match(field, sapply(a, "[", 1))
+         if (!is.na(m)) {
+             rv = a[[m]][2]
+         }
+         else {
+             rv = as.character(NA)
+         }
+         return(rv)
+     })
+}
+
+gffRead <- function(gffFile, nrows = -1) {
+     cat("Reading ", gffFile, ": ", sep="")
+     gff = read.table(gffFile, sep="\t", as.is=TRUE, quote="",
+     header=FALSE, comment.char="#", nrows = nrows,
+     colClasses=c("character", "character", "character", "integer",
+"integer",
+     "character", "character", "character", "character"))
+     colnames(gff) = c("seqname", "source", "feature", "start", "end",
+             "score", "strand", "frame", "attributes")
+        cat("found", nrow(gff), "rows with classes:",
+        paste(sapply(gff, class), collapse=", "), "\n")
+     stopifnot(!any(is.na(gff$start)), !any(is.na(gff$end)))
+     return(gff)
+}
+
+# read in Araport11 gff3
+anno <- gffRead("~/Labwork/Protocols/Araport11-igv/Araport11_GFF3_genes_transposons.201606.gff")
 ```
 
 #### Aim
@@ -28,7 +62,7 @@ See:
 
 ## Alternative splicing under RRGD
 
-```{r RRGD DGEList}
+```{r RRGD DGEList, message=FALSE}
 data_path <- paste0(rrgd_dir)
 countFiles <- dir(path = data_path, pattern = "RTD2.counts")
 
@@ -67,13 +101,6 @@ print(dge)
 
 # quick cleanup for memory
 rm(list = c('y','input','keep'))
-```
-
-DGEList setup, now can start estimating dispersion and fitting negative binomial GLMs...
-
-```{r}
-### Biological coefficient of variation
-plotBCV(dge)
 
 ### MDS plots
 groups <- unique(as.character(sampleGroups))
@@ -84,10 +111,23 @@ mds <- plotMDS(dge, ndim=3, dim.plot = c(1,2), col = rep(rainbow(length(groups))
 s3d <- scatterplot3d(x = mds$cmdscale.out[,1:3], main = "3-dimensional MDS", xlab = "dim 1", ylab = "dim 2", zlab = "dim 3", color = rep(rainbow(length(groups)), each = n.reps), type='h', pch=19, lwd=1.5)
 text(s3d$xyz.convert(mds$cmdscale.out[,1:3]), labels=sampleGroups, cex=.75, pos=4)
 
+```
+
+Fit negative binomial GLMs for the following comparisons (and view dispersion of all transcripts in this dataset):
+
+- EL30 vs 0 [rrgd.II - rrgd.I] 
+- EL60 vs 0 [rrgd.III - rrgd.I] 
+- EL60R7.5 vs 0  [rrgd.V - rrgd.I]
+
+```{r}
 ## GLM
-my.contrasts <- makeContrasts(rrgd.II - rrgd.I,
-levels=design
+my.contrasts <- makeContrasts(
+  rrgd.II - rrgd.I, 
+  rrgd.III - rrgd.I, 
+  rrgd.V - rrgd.I,
+  levels=design
 )
+
 print(my.contrasts)
 
 qlfit <- glmQLFit(dge, design, robust=TRUE, dispersion=dge$trended.dispersion)
@@ -98,46 +138,53 @@ plotQLDisp(qlfit)
 
 The above plots look a bit weird, likely due to assigning counts at the exon level (ie. multiple rows for different exons at the same gene). Onto alternative splicing (ie. testing for altered exon usage) after fitting quasi-likelihood negative binomial GLM from `glmQLfit`.
 
-```{r}
-### alternative splicing
+```{r, message=FALSE}
+## get AS numbers across timepoints
+for(i in colnames(my.contrasts)){
+  sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,i])
+  tt <- topSpliceDGE(sp, test="gene", n=dim(sp$gene.genes)[1], FDR = 0.05)
+  print(i)
+  print(dim(tt))
+}
+
+### alternative splicing of specific timepoint
 sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"rrgd.II - rrgd.I"])
-tt <- topSpliceDGE(sp, test="gene", n=dim(sp$gene.genes)[1], FDR = 0.05)
+tt_II <- topSpliceDGE(sp, test="gene", n=dim(sp$gene.genes)[1], FDR = 0.05)
 
-head(tt)
+sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"rrgd.III - rrgd.I"])
+tt_III <- topSpliceDGE(sp, test="gene", n=dim(sp$gene.genes)[1], FDR = 0.05)
 
-# example AS loci
-plotSpliceDGE(sp, geneid = paste(tt$Geneid[1]))
+sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"rrgd.V - rrgd.I"])
+tt_V <- topSpliceDGE(sp, test="gene", n=dim(sp$gene.genes)[1], FDR = 0.05)
 
-# an alternative, seemingly weaker test
-# sv <- spliceVariants(dge, geneID = dge$genes$Geneid, group = dge$samples$group, estimate.genewise.disp = T)$table
-# sv <- subset(sv, sv$PValue < 0.05) # would need to add adjustment
+test <- list(tt_II$Geneid, tt_III$Geneid, tt_V$Geneid)
+length(Reduce(intersect, test))
+
 ```
 
-Looks like there are 65 alternatively spliced loci, see if any overlap with RRGD loci.
+Looks like there are 36 alternatively spliced loci in common across these timepoints, see if are also RRGD loci.
 
 ```{r}
 rrgd_loci <- read.csv(file = "~/Manuscripts/2016_RRGD/TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
   select(c(1,7)) %>%
   mutate(ID = as.character(paste(Locus.Identifier)))
 
-head(rrgd_loci)
-
-common <- Reduce(intersect, list(rrgd_loci$ID, tt$Geneid))
+common <- Reduce(intersect, list(rrgd_loci$ID, Reduce(intersect, test)))
 
 # what genes overlap -- Aaron to model over RRGD?
 print(common)
 
-# how many genes
-length(common)
-
-# 11/65 AS = 16.9%
-
 # which cateogry transcripts are these?
 table(rrgd_loci$Category[rrgd_loci$Locus.Identifier %in% common])
 
-# e.g. loci
-plotSpliceDGE(sp, geneid = paste(common[2]))
+par(mfrow = c(2,2))
+
+for(i in unique(common)){
+plotSpliceDGE(sp, geneid = paste(i))
+}
+
+par(mfrow = c(1,1))
 ```
 
 #### Conclusion
-Unclear, but maybe something there? There appears to be alternative splicing after 30 min EL, however, these do not appear to strongly correlate wit loci that undergo rapid decay during recovery (RRGD loci)
+While there appears to be light-induced AS, it does not appear to be linked to transcript stability (at a transcriptome scale). There may still be transcript-dependent effects.

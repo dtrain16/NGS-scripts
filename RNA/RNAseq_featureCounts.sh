@@ -84,9 +84,12 @@ if [[ $format == "bed" ]]; then
 			$sample 2>&1 | tee -a ../*log
 	fi
 
+rm temp*.saf -v
+
 fi
 
 if [[ $format == "gtf" ]]; then
+
 	if [[ $layout == "SE" ]]; then
 		featureCounts\
 			-F GTF\
@@ -110,7 +113,5 @@ if [[ $format == "gtf" ]]; then
 		        $sample 2>&1 | tee -a ../*log
 	fi
 fi
-
-rm temp*.saf -v
 
 echo "DONE"
