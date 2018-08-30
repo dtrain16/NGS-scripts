@@ -1,11 +1,11 @@
 #!/usr/bin/env Rscript
 # Produce methylome correlation matrix using specified BED files
-# USAGE: merge_wigs.r <context> <bin size> <cov> <type [reps,1 vs sum,2 (default)]>
 
 args = commandArgs(trailingOnly=T)
 
 if(length(args) != 4){
 	print('Args missing!')
+	print('USAGE: merge_wigs.r <context> <bin size> <cov> <type [1,reps vs 2,sum]>')
 	print('EXAMPLE merge_wigs.r CHH 0 0 1')
 	quit()
 	n
