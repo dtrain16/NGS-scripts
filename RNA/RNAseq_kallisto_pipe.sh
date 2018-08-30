@@ -48,16 +48,17 @@ if [ "$1" == "PE" ]; then
 		exit 1
 	fi
 
-	# gather input variables
-	R1=$2
-	R2=$3
-	strand=$4
-	annotation=$5
-	name=$6
+# gather input variables
+type=$1
+R1=$2
+R2=$3
+strand=$4
+annotation=$5
+name=$6
 
 echo "##################"
 echo "Performing paired-end kallisto RNA-seq alignment"
-echo "Type: $1"
+echo "Type: $type"
 echo "Input Files: $R1 $R2"
 echo "Annotation: $annotation"
 echo "Sample: $name"
@@ -100,8 +101,17 @@ echo "kallisto"
 
 kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_logs_${dow}.log
 
-kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+if [ $strand == "unstranded" ]; then
 
+	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+
+elif [ $strand == "fr_stranded" ]; then
+	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+
+else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+
+fi
+ 
 mv abundance.hd5 ${name}.hd5
 mv abundance.tsv ${name}.tsv
 
