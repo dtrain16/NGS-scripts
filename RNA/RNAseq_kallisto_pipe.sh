@@ -72,29 +72,37 @@ cd ${name}_kallisto_${dow}
 mkdir 0_fastq
 mv $R1 $R2 -t 0_fastq/
 
+# FastQC
+echo "QC ..."
 mkdir 1_fastqc 
-fastqc -t 4 $R1 $R2 2>&1 | tee -a ${sample}_logs_${dow}.log
-mv ${R1%%.fastq*}_fastqc* 1_fastqc
-mv ${R2%%.fastq*}_fastqc* 1_fastqc
+fastqc -t 4 0_fastq/$R1 0_fastq/$R2 2>&1 | tee -a ${name}_logs_${dow}.log
+mv 0_fastq/${R1%%.fastq*}_fastqc* 1_fastqc/
+mv 0_fastq/${R2%%.fastq*}_fastqc* 1_fastqc/
 
 ### Read trimming
 echo "Adapter and quality trimming"
 mkdir 2_trimmed_fastq
-scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 $R1 > ${R1%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
 
-scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 $R2 > ${R2%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
+echo "scythe"
+scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 0_fastq/$R1 > ${R1%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
 
-sickle pe -f ${R1%%.fastq*}_noadapt.fastq -r ${R2%%.fastq*}_noadapt.fastq -o ${R1%%.fastq*}_trimmed.fastq -p ${R2%%.fastq*}_trimmed.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ${name}_logs_${dow}.log
+scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 0_fastq/$R2 > ${R2%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
+
+echo "sickle"
+sickle pe -f ${R1%%.fastq*}_noadapt.fastq -r ${R2%%.fastq*}_noadapt.fastq -o ${R1%%.fastq*}_trimmed.fastq -p ${R2%%.fastq*}_trimmed.fastq -s trimmed.singles.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ${name}_logs_${dow}.log
 
 rm *noadapt.fastq
 mv *trimmed.fastq -t 2_trimmed_fastq
+mv trimmed.singles.fastq 2_trimmed_fastq
+gzip 2_trimmed_fastq/trimmed.singles.fastq
 
 ## FastQC
+echo "QC ..."
 mkdir 3_trimmed_fastqc
 
 fastqc -t 4 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* 2>&1 | tee -a ${name}_logs_${dow}.log
 
-mv *trimmed_fastqc* 3_trimmed_fastqc
+mv 2_trimmed_fastq/*trimmed_fastqc* 3_trimmed_fastqc/
 
 ## Generate kallisto index
 echo "kallisto"
