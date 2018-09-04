@@ -120,7 +120,7 @@ else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 2_trim
 
 fi
  
-mv abundance.hd5 ${name}.hd5
+mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
 
 echo "Complete"
