@@ -244,11 +244,6 @@ bismark2bedGraph --CX CpG*txt -o ${fileID}_CG.bed 2>&1 | tee -a ../${fileID}_log
 bismark2bedGraph --CX CHG*txt -o ${fileID}_CHG.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 bismark2bedGraph --CX CHH*txt -o ${fileID}_CHH.bed 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
-
-mkdir 5_output_files
-
-mv 4_bismark_alignment/*.cov.gz 5_output_files
-
 rm -v C*txt
 rm -v *bed.gz
 
