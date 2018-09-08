@@ -18,6 +18,4 @@ out=$3
 
 perl ~/bin/BS-Snper-master/BS-Snper.pl --fa $fa --input $file --output temp.out --methcg meth.cg --methchg meth.chg --methchh meth.chh --minhetfreq 0.15 --minhomfreq 0.85 --minquali 30 --mincover 15 --maxcover 1000 --minread2 2 --errorate 0.02 --mapvalue 20 > ${out}.SNP.bed 2>${out}_ERR.log
 
-sort -k1,1 -k2,2n ${file}.SNP.bed > ${file}.SNP.sorted.bed
-rm ${out}.SNP.bed
-
+rm temp.out meth.cg meth.chg meth.chh
