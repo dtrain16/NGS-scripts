@@ -166,7 +166,7 @@ fi
 
 # initial fastqc
 mkdir 1_fastqc
-fastqc -t 2 $fq1 $fq2 2>&1 | tee -a ${fileID}_logs_${dow}.log
+fastqc -t 4 $fq1 $fq2 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq1%%.fastq*}_fastqc* 1_fastqc
 mv ${fq2%%.fastq*}_fastqc* 1_fastqc
 
@@ -196,7 +196,7 @@ echo "FASTQC..."
 
 # fastqc again
 mkdir 3_trimmed_fastqc
-fastqc -t 2 2_scythe_sickle/${fq1%%.fastq*}_trimmed.fastq* 2_scythe_sickle/${fq2%%.fastq*}_trimmed.fastq* 2>&1 | tee -a ${fileID}_logs_${dow}.log
+fastqc -t 4 2_scythe_sickle/${fq1%%.fastq*}_trimmed.fastq* 2_scythe_sickle/${fq2%%.fastq*}_trimmed.fastq* 2>&1 | tee -a ${fileID}_logs_${dow}.log
 
 mv 2_scythe_sickle/${fq1%%.fastq*}_trimmed_fastqc* -t 3_trimmed_fastqc
 mv 2_scythe_sickle/${fq2%%.fastq*}_trimmed_fastqc* -t 3_trimmed_fastqc
