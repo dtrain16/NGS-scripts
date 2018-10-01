@@ -101,7 +101,7 @@ echo "Beginning alignment ..."
 # subread-align -T 4 -t 1 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 # use subjunc to align 
-subjunc -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+subjunc -u -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 if [[ $fq%%.fastq}* != *".gz" ]]; then gzip ${fq%%.fastq*}_trimmed.fastq; fi
 
@@ -217,7 +217,7 @@ echo "Beginning alignment ..."
 # subread-align -T 4 -t 1 -i ${index} -r ${fq1%%.fastq*}_trimmed.fastq* -R ${fq2%%.fastq*}_trimmed.fastq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 # use subjunc to align 
-subjunc -T 4 -i $index -r ${fq1%%.fastq*}_trimmed.fastq -R ${fq2%%.fastq*}_trimmed.fastq -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_trimmed.fastq -R ${fq2%%.fastq*}_trimmed.fastq -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
