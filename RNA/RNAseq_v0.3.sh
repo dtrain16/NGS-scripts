@@ -66,7 +66,7 @@ echo "Performing adapter and low-quality read trimming... "
 mkdir 2_read_trimming
 cd 2_read_trimming
 # Trim with hard clipping - nextseq500 bias
-trim_galore --fastqc --clip_R1 10 --three_prime_clip_R1 1 ../$fq | tee -a ../${fileID}_${dow}.log
+trim_galore --fastqc --clip_R1 10 --three_prime_clip_R1 1 ../$fq | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
@@ -155,7 +155,7 @@ echo "Performing adapter and low-quality read trimming... "
 mkdir 2_read_trimming
 cd 2_read_trimming
 # Trim with hard clip - nextseq500 bias
-trim_galore --fastqc --paired --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+trim_galore --fastqc --paired --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
