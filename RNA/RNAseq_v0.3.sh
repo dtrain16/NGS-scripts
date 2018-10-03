@@ -3,8 +3,7 @@ set -e
 set -u
 
 # RNAseq pipeline; Quality control, align and index raw RNAseq reads for downstream analyses
-# based on pedrocrisp/NGS-pipelines/RNAseqPipe3
-
+# Perform hard-clip for NextSeq500 sequence biases
 # Make sure genome index has been built using subread
 # split all.fasta into chromosomes: samtools faidx genome.fasta chrX > chrX.fasta
 # subread-buildindex -o TAIR10_subread_index TAIR10_Chr1.fasta TAIR10_Chr2.fasta TAIR10_Chr3.fasta TAIR10_Chr4.fasta TAIR10_Chr5.fasta TAIR10_ChrC.fasta TAIR10_ChrM.fasta
@@ -66,9 +65,10 @@ echo "Performing adapter and low-quality read trimming... "
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc ../$fq | tee -a ../${fileID}_logs_${dow}.log
-
+# Trim with hard clipping - nextseq500 bias
+trim_galore --fastqc --clip_R1 10 --three_prime_clip_R1 1 ../$fq | tee -a ../${fileID}_${dow}.log
 cd ../
+
 mkdir 0_fastq
 mv $fq 0_fastq
 
@@ -153,8 +153,9 @@ echo "Performing adapter and low-quality read trimming... "
 
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
-trim_galore --fastqc --paired ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
+cd 2_read_trimming
+# Trim with hard clip - nextseq500 bias
+trim_galore --fastqc --paired --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
 cd ../
 
 mkdir 0_fastq
