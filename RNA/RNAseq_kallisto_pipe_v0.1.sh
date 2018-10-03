@@ -81,28 +81,10 @@ mv 0_fastq/${R2%%.fastq*}_fastqc* 1_fastqc/
 
 ### Read trimming
 echo "Adapter and quality trimming"
+
 mkdir 2_trimmed_fastq
-
-echo "scythe"
-scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 0_fastq/$R1 > ${R1%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
-
-scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 0_fastq/$R2 > ${R2%%.fastq*}_noadapt.fastq 2>&1 | tee -a ${name}_logs_${dow}.log
-
-echo "sickle"
-sickle pe -f ${R1%%.fastq*}_noadapt.fastq -r ${R2%%.fastq*}_noadapt.fastq -o ${R1%%.fastq*}_trimmed.fastq -p ${R2%%.fastq*}_trimmed.fastq -s trimmed.singles.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ${name}_logs_${dow}.log
-
-rm *noadapt.fastq
-mv *trimmed.fastq -t 2_trimmed_fastq
-mv trimmed.singles.fastq 2_trimmed_fastq
-gzip 2_trimmed_fastq/trimmed.singles.fastq
-
-## FastQC
-echo "QC ..."
-mkdir 3_trimmed_fastqc
-
-fastqc -t 4 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* 2>&1 | tee -a ${name}_logs_${dow}.log
-
-mv 2_trimmed_fastq/*trimmed_fastqc* 3_trimmed_fastqc/
+cd 2_trimmed_fastq
+trim_galore --fastqc --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
 
 ## Generate kallisto index
 echo "kallisto"
@@ -111,12 +93,12 @@ kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_log
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fastq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fastq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
  

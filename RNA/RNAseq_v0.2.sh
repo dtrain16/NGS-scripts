@@ -66,7 +66,7 @@ echo "Performing adapter and low-quality read trimming... "
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc ../$fq | tee -a ../${fileID}_${dow}.log
+trim_galore --fastqc ../$fq | tee -a ../${fileID}_logs_${dow}.log
 
 ## with hard clipping if req'd
 # trim_galore --fastqc --clip_R1 10 --three_prime_clip_R1 1 ../$fq | tee -a ../${fileID}_${dow}.log
@@ -77,7 +77,7 @@ mv $fq 0_fastq
 
 # subread align
 mkdir 3_subjunc
-mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq -t 3_subjunc/
+mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq* -t 3_subjunc/
 cd 3_subjunc
 
 echo "Beginning alignment ..."
@@ -85,7 +85,7 @@ echo "Beginning alignment ..."
 # subjunc aligner 
 subjunc -u -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
-if [[ $fq%%.fastq}* != *".gz" ]]; then gzip ${fq%%.fq*}_trimmed.fastq; fi
+if [[ ${fq%%.fastq*}* != *.gz ]]; then gzip ${fq%%.fastq*}* ; fi
 
 echo "cleaning..."
 
@@ -180,8 +180,8 @@ subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_trimmed.fq* -R ${fq2%%.fastq*}_trim
 
 echo "cleaning..."
 
-if [[ $fq1%%.fastq}* != *".gz" ]]; then gzip ${fq1%%.fastq*}_trimmed.fq; fi
-if [[ $fq2%%.fastq}* != *".gz" ]]; then gzip ${fq2%%.fastq*}_trimmed.fq; fi
+if [[ ${fq1%%.fastq*}* != *.gz ]]; then gzip ${fq1%%.fastq*}* ; fi
+if [[ ${fq2%%.fastq*}* != *.gz ]]; then gzip ${fq2%%.fastq*}* ; fi
 
 mv *trimmed.fq.gz ../2_read_trimming/
 
