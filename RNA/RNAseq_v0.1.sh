@@ -63,6 +63,13 @@ mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
 
+# adapter and quality trimming with trim_galore
+mkdir 2_read_trimming
+# trim_galore --fastqc --paired -q 20 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+
+## with hard clipping if req'd
+# trim_galore --fastqc --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+
 # adapter and quality trimming using scythe and sickle 
 mkdir 2_scythe_sickle
 cd 2_scythe_sickle
@@ -73,9 +80,6 @@ scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 ../$fq > ${fq%%.fastq*}_noadap
 
 echo "sickle low-quality ..."
 sickle se -f ${fq%%.fastq*}_noadapt.fastq -o ${fq%%.fastq*}_trimmed.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-## NextSeq500 hard clip?
-## trim_galore -q 20 --clip_R1 10 --three_prime_clip_R1 1 ${fq} | tee -a ../${fileID}_${dow}.log
 
 echo "Done... cleaning ..."
 
@@ -100,10 +104,7 @@ cd 4_subread-align/
 
 echo "Beginning alignment ..."
 
-# use subread to align -t 0 = RNA-seq -t 1 = genomic DNA seq
-# subread-align -T 4 -t 1 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-# use subjunc to align 
+# subjunc aligner 
 subjunc -u -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 if [[ $fq%%.fastq}* != *".gz" ]]; then gzip ${fq%%.fastq*}_trimmed.fastq; fi
@@ -175,7 +176,15 @@ mv ${fq2%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
 
+# adapter and quality trimming with trim_galore
+mkdir 2_read_trimming
+# trim_galore --fastqc --paired -q 20 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+
+## with hard clipping if req'd
+# trim_galore --fastqc --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+
 # adapter and quality trimming using scythe and sickle 
+
 mkdir 2_scythe_sickle
 cd 2_scythe_sickle
 
@@ -188,8 +197,6 @@ scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 ../$fq2 > ${fq2%%.fastq*}_noad
 echo "sickle low-quality ..."
 
 sickle pe -f ${fq1%%.fastq*}_noadapt.fastq -r ${fq2%%.fastq*}_noadapt.fastq -o ${fq1%%.fastq*}_trimmed.fastq -p ${fq2%%.fastq*}_trimmed.fastq -s trimmed.singles.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-## trim_galore --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
 
 echo "Done... cleaning ..."
 
@@ -218,10 +225,7 @@ cd 4_subread-align/
 
 echo "Beginning alignment ..."
 
-# use subread to align -t 0 = RNA-seq -t 1 = genomic DNA seq
-# subread-align -T 4 -t 1 -i ${index} -r ${fq1%%.fastq*}_trimmed.fastq* -R ${fq2%%.fastq*}_trimmed.fastq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-# use subjunc to align 
+# subjunc aligner 
 subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_trimmed.fastq -R ${fq2%%.fastq*}_trimmed.fastq -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
