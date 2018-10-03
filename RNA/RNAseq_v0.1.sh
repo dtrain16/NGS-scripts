@@ -74,6 +74,9 @@ scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 ../$fq > ${fq%%.fastq*}_noadap
 echo "sickle low-quality ..."
 sickle se -f ${fq%%.fastq*}_noadapt.fastq -o ${fq%%.fastq*}_trimmed.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
+## NextSeq500 hard clip?
+## trim_galore -q 20 --clip_R1 10 --three_prime_clip_R1 1 ${fq} | tee -a ../${fileID}_${dow}.log
+
 echo "Done... cleaning ..."
 
 rm ${fq%%.fastq*}_noadapt.fastq
@@ -185,6 +188,8 @@ scythe -a $HOME/scripts/TruSeq-adapters.fa -p 0.1 ../$fq2 > ${fq2%%.fastq*}_noad
 echo "sickle low-quality ..."
 
 sickle pe -f ${fq1%%.fastq*}_noadapt.fastq -r ${fq2%%.fastq*}_noadapt.fastq -o ${fq1%%.fastq*}_trimmed.fastq -p ${fq2%%.fastq*}_trimmed.fastq -s trimmed.singles.fastq -t sanger -q 20 -l 20 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+
+## trim_galore --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
 
 echo "Done... cleaning ..."
 
