@@ -9,8 +9,6 @@ print(args)
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("DSS")
 
-library(DSS)
-
 # Define arguments
 context = args[1]
 pvalue = args[2]
@@ -25,6 +23,7 @@ files <- dir(pattern = paste0(context,".output"))
 group1 <- files[condition1]
 group2 <- files[condition2]
 
+library(DSS)
 # read input files in DSS format (chr, pos, N, X)
 dat1.1 <- read.delim(unlist(group1)[1])
 dat1.2 <- read.delim(unlist(group1)[2])
@@ -42,6 +41,14 @@ dmlTest <- DMLtest(BSobj,group1=c("C1","C2","C3"), group2=c("N1","N2","N3"),smoo
 
 # identify DMRs based on dmltesting and write out to file
 dmrs <- callDMR(dmlTest, delta=dlt, minlen=50, minCG=3, pct.sig=0.5, dis.merge=50, p.threshold=pvalue)
+
+## look at distributions of test statistics and p-values
+par(mfrow=c(2,2))
+hist(dmlTest$stat, 100, main="test statistics")
+hist(dmlTest$pval, 100, main="P values")
+hist(dmlTest$fdr, 100, main="FDR values")
+hist(dmlTest$diff, 100, main="estimates")
+dev.off()
 
 # filename
 file1=paste0(group1,"vs",group2,"_",context,"_delta=",dlt,"_p=",pvalue,".bed")
