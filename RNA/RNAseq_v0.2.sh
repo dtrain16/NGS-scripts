@@ -149,12 +149,14 @@ fastqc -t 4 $fq1 $fq2 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq1%%.fastq*}_fastqc* 1_fastqc
 mv ${fq2%%.fastq*}_fastqc* 1_fastqc
 
+echo ""
 echo "Performing adapter and low-quality read trimming... "
+echo ""
 
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
+cd 2_read_trimming
 trim_galore --fastqc --paired ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
 cd ../
 
 mkdir 0_fastq
@@ -163,14 +165,14 @@ mv $fq2 0_fastq
 
 # subread align
 mkdir 3_subjunc
-mv 2_read_trimming/${fq1%%.fastq*}_trimmed.fq* -t 3_subjunc/
-mv 2_read_trimming//${fq2%%.fastq*}_trimmed.fq* -t 3_subjunc/
+mv 2_read_trimming/${fq1%%.fastq*}_val_1.fq* -t 3_subjunc/
+mv 2_read_trimming//${fq2%%.fastq*}_val_2.fq* -t 3_subjunc/
 cd 3_subjunc/
 
 echo "Beginning alignment ..."
 
 # subjunc aligner 
-subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_trimmed.fq* -R ${fq2%%.fastq*}_trimmed.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_val_1.fq* -R ${fq2%%.fastq*}_val_2.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 

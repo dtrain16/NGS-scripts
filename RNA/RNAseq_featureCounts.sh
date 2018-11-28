@@ -37,7 +37,7 @@ if [[ $format == "saf" ]]; then
 			-C\
 			-T 2\
 			-s $strand\
-			-a temp2.saf\
+			-a $bedfile\
 		        -o "${1%%.bam*}_${outname}.counts"\
 		        $sample 2>&1 | tee -a ../*log
 	fi
@@ -49,7 +49,7 @@ if [[ $format == "saf" ]]; then
 			-C\
 			-T 2\
 			-s $strand\
-			-a temp2.saf\
+			-a $bedfile\
 			-o "${1%%.bam*}_${outname}.counts"\
 			$sample 2>&1 | tee -a ../*log
 	fi
