@@ -8,24 +8,28 @@ set -u
 # Ensure subread indexed genome & chromosome sizes are prepared eg TAIR10/TAIR10_Chr.all.fasta.len
 # samtools faidx TAIR10_Chr.all.fasta | cut -f1,2 TAIR10_Chr.all.fasta.fai > TAIR10_Chr.all.fasta.len
 
-if [ "$#" -lt 3 ]; then
+if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
-echo "USAGE: RNAseq_bam_to_bedgraph.sh <sample name> <SE, PE> <unstranded, stranded, rev_stranded>"
-echo "EXAMPLE: RNAseq_bam_to_bedgraph.sh col0-r1.bam PE unstranded"
+echo "USAGE: RNAseq_bam_to_bedgraph.sh <sample name> <SE, PE> <unstranded, stranded, rev_stranded> <chr_sizes>"
+echo "EXAMPLE: RNAseq_bam_to_bedgraph.sh col0-r1.bam PE unstranded TAIR10_Chr.all.fasta.len"
 exit 1
 fi
 
 smp=$1
 lay=$2
 str=$3
+chrc_sizes=$4
 
 # file for length of all 7 chromosomes
-chrc_sizes=$HOME/TAIR10/TAIR10_Chr.all.fasta.len
+# chrc_sizes=$HOME/TAIR10/TAIR10_Chr.all.fasta.len
 
+echo ""
 echo ""
 echo "sample = $1"
 echo "layout = $2"
 echo "strand = $3"
+echo "chr_size = $4"
+echo ""
 echo ""
 echo "Produce $lay $str bigWig file(s) from $smp ..."
 echo ""
@@ -57,7 +61,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam -g $chrc_sizes > ${smp%%bam}plus.bg
 	
 	echo "bigWigs..."
-	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
+	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes} ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 	
 	rm ${smp%%.bam}*forward*bam -v

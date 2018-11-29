@@ -145,7 +145,7 @@ fi
 
 # initial fastqc
 mkdir 1_fastqc
-fastqc -t 4 $fq1 $fq2 2>&1 | tee -a ${fileID}_logs_${dow}.log
+fastqc -t 4 $fq1 $fq2 2>&1 | tee -a ${fileID}_${dow}.log
 mv ${fq1%%.fastq*}_fastqc* 1_fastqc
 mv ${fq2%%.fastq*}_fastqc* 1_fastqc
 
@@ -172,14 +172,15 @@ cd 3_subjunc/
 echo "Beginning alignment ..."
 
 # subjunc aligner 
-subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_val_1.fq* -R ${fq2%%.fastq*}_val_2.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+subjunc -u -T 4 -i $index -r ${fq1%%.fastq*}_val_1.fq* -R ${fq2%%.fastq*}_val_2.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_${dow}.log
 
 echo "cleaning..."
 
 if [[ ${fq1%%.fastq*}* != *.gz ]]; then gzip ${fq1%%.fastq*}* ; fi
 if [[ ${fq2%%.fastq*}* != *.gz ]]; then gzip ${fq2%%.fastq*}* ; fi
 
-mv *trimmed.fq.gz ../2_read_trimming/
+mv *_val_1.fq.gz ../2_read_trimming/
+mv *_val_2.fq.gz ../2_read_trimming/
 
 echo "Alignment complete"
 
