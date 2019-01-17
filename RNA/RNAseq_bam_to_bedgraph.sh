@@ -95,7 +95,7 @@ fi
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	# need sorted bam
 	echo "sort by position"
-	samtools sort ${smp} -o ${smp%%bam}sorted.bam
+	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
 	smp="${smp%%bam}sorted.bam"
 	
 	echo "BAM to bedgraph ..."
@@ -117,7 +117,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	
 	# need sorted bam
 	echo "sort by position"
-	samtools sort ${smp} -o ${smp%%bam}sorted.bam
+	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
 
 	smp="${smp%%bam}sorted.bam"
 
@@ -162,7 +162,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 
 	# need sorted bam
 	echo "sort by position"
-	samtools sort ${smp} -o ${smp%%bam}sorted.bam
+	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
 
 	smp="${smp%%bam}sorted.bam"
 
