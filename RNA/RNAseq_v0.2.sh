@@ -58,7 +58,7 @@ fi
 
 # initial fastqc
 mkdir 1_fastqc
-fastqc -t 2 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
+fastqc -t 4 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
