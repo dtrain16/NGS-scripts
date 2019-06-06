@@ -116,12 +116,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# http://seqanswers.com/forums/showthread.php?t=29399
 	
 	# need sorted bam
-	echo "sort by position"
 	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-
 	smp="${smp%%bam}sorted.bam"
 
-	echo "forward strand"
 	# R1 forward
 	samtools view -f 99 -b $smp > ${smp%%bam}R1F.bam
 	# R2 reverse
@@ -129,7 +126,6 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
-	echo "reverse strand"
 	# R1 reverse
 	samtools view -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
@@ -139,9 +135,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam -g $chrc_sizes > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam -g $chrc_sizes > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
@@ -161,12 +157,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# http://seqanswers.com/forums/showthread.php?t=29399
 
 	# need sorted bam
-	echo "sort by position"
 	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-
 	smp="${smp%%bam}sorted.bam"
 
-	echo "forward strand"
 	# R1 forward
 	samtools view -f 99 -b $smp > ${smp%%bam}R1F.bam
 	# R2 reverse
@@ -174,7 +167,6 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
-	echo "reverse strand"
 	# R1 reverse
 	samtools view -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
@@ -184,9 +176,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam -g $chrc_sizes > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam -g $chrc_sizes > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
