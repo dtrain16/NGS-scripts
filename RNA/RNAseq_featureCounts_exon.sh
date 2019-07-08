@@ -21,10 +21,10 @@ strand=$3
 ref=$4
 
 if [[ $ref == "rtd2" ]]; then
-	bedfile="$HOME/AtRTD2/AtRTD2_19April2016.gtf"
+	bedfile="$HOME/ref_seqs/AtRTD2/AtRTD2_19April2016.gtf"
 	outname="${sample%%.bam*}_RTD2.counts"
 elif [[ $ref == "padded" ]]; then
-	bedfile="$HOME/AtRTD2/AtRTDv2_QUASI_19April2016.gtf"
+	bedfile="$HOME/ref_seqs/AtRTD2/AtRTDv2_QUASI_19April2016.gtf"
 	outname="${sample%%.bam*}_quasi.counts"
 else
 	echo " bad argument - pick 'rtd2' or 'padded' "
