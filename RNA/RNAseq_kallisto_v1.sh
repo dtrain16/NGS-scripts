@@ -13,7 +13,7 @@ if [ "$#" -lt 5 ]; then
 exit 1
 fi
 
-dow=$(date +"%F-%H-%m-%S")
+dow=$(date +"%F")
 
 ###########
 ### SINGLE END
