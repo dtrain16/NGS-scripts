@@ -86,12 +86,12 @@ kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_log
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
  
