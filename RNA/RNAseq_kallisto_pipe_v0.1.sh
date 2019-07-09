@@ -57,7 +57,7 @@ annotation=$5
 name=$6
 
 echo "##################"
-echo "Performing paired-end kallisto RNA-seq alignment"
+echo "Performing paired-end alignments with kallisto"
 echo "Type: $type"
 echo "Input Files: $R1 $R2"
 echo "Annotation: $annotation"
@@ -72,18 +72,11 @@ cd ${name}_kallisto_${dow}
 mkdir 0_fastq
 mv $R1 $R2 -t 0_fastq/
 
-# FastQC
-echo "QC ..."
-mkdir 1_fastqc 
-fastqc -t 4 0_fastq/$R1 0_fastq/$R2 2>&1 | tee -a ${name}_logs_${dow}.log
-mv 0_fastq/${R1%%.fastq*}_fastqc* 1_fastqc/
-mv 0_fastq/${R2%%.fastq*}_fastqc* 1_fastqc/
+### Read trimming & FastQC
+echo "Read trimming and FastQC"
 
-### Read trimming
-echo "Adapter and quality trimming"
-
-mkdir 2_trimmed_fastq
-cd 2_trimmed_fastq
+mkdir 1_trimmed_fastq
+cd 1_trimmed_fastq
 trim_galore --fastqc --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
 
 ## Generate kallisto index
@@ -93,19 +86,18 @@ kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_log
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 2_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 2_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
  
 mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
 
-echo "Complete"
+echo "complete"
 
 fi
-
