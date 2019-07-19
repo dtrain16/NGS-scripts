@@ -54,7 +54,7 @@ echo "Read trimming and FastQC"
 
 mkdir 1_trimmed_fastq
 cd 1_trimmed_fastq
-trim_galore --fastqc --fastqc_args -t 4 ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
+trim_galore --fastqc --fastqc_args "--threads 4" ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
 
 ## Generate kallisto index
 echo "kallisto"
@@ -104,7 +104,7 @@ echo "Read trimming and FastQC"
 
 mkdir 1_trimmed_fastq
 cd 1_trimmed_fastq
-trim_galore --fastqc --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
+trim_galore --fastqc --fastqc_args "--threads 4" --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
 
 ## Generate kallisto index
 echo "kallisto"
