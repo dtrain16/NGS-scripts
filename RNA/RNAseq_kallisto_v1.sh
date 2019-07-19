@@ -27,6 +27,7 @@ if [ "$1" == "SE" ]; then
 		exit 1
 	fi
 
+type=$1
 R1=$2
 strand=$3
 annotation=$4
@@ -53,7 +54,7 @@ echo "Read trimming and FastQC"
 
 mkdir 1_trimmed_fastq
 cd 1_trimmed_fastq
-trim_galore --fastqc ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
+trim_galore --fastqc --fastqc_args -t 4 ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
 
 ## Generate kallisto index
 echo "kallisto"
@@ -108,16 +109,16 @@ trim_galore --fastqc --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_
 ## Generate kallisto index
 echo "kallisto"
 
-kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_logs_${dow}.log
+kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
  
