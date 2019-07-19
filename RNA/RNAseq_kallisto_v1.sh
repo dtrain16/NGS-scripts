@@ -2,14 +2,15 @@
 
 # Use kallisto to perform k-mer based transcript quantification
 # https://www.nature.com/articles/nbt.3519
+# Build annotation index kallisto index -i annotation.idx annotation.fa
 
 set -eu
 
 if [ "$#" -lt 5 ]; then
 	echo "Missing arguments!"
-	echo "USAGE: kallisto.sh <SE,PE> <R1> <R2> <strandedness> <annotation> <name>"
+	echo "USAGE: kallisto.sh <SE,PE> <R1> <R2> <strandedness> <index> <name>"
 	echo "strand: unstranded, fr_stranded, rf_stranded"
-	echo "EXAMPLE: kallisto.sh PE SRR5724597_1.fastq.gz SRR5724597_2.fastq.gz unstranded AtRTD2_19April2016.fa col0-r1"
+	echo "EXAMPLE: kallisto.sh PE SRR5724597_1.fastq.gz SRR5724597_2.fastq.gz unstranded AtRTD2_19April2016.idx col0-r1"
 exit 1
 fi
 
@@ -23,7 +24,7 @@ if [ "$1" == "SE" ]; then
 	# requirements
 	if [ "$#" -ne 5 ]; then
 		echo "Missing required arguments for single-end!"
-		echo "USAGE: kallisto.sh <SE> <R1> <strandedness> <annotation> <name>"
+		echo "USAGE: kallisto.sh <SE> <R1> <strandedness> <index> <name>"
 		exit 1
 	fi
 
@@ -56,10 +57,9 @@ mkdir 1_trimmed_fastq
 cd 1_trimmed_fastq
 trim_galore --fastqc --fastqc_args "--threads 4" ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
 
-## Generate kallisto index
+echo "                      "
 echo "kallisto"
-
-kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_logs_${dow}.log
+echo "                      "
 
 fi
 
@@ -106,10 +106,9 @@ mkdir 1_trimmed_fastq
 cd 1_trimmed_fastq
 trim_galore --fastqc --fastqc_args "--threads 4" --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
 
-## Generate kallisto index
+echo "                      "
 echo "kallisto"
-
-kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ../${name}_logs_${dow}.log
+echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
