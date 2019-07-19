@@ -32,7 +32,33 @@ strand=$3
 annotation=$4
 name=$5
 
-kallito index -i 
+echo "##################"
+echo "Performing single-end alignments with kallisto"
+echo "Type: $type"
+echo "Input Files: $R1"
+echo "Annotation: $annotation"
+echo "Sample: $name"
+echo "Time of analysis: $dow"
+echo "##################"
+
+# file structure
+mkdir ${name}_kallisto_${dow}
+mv $R1 -t ${name}_kallisto_${dow}
+cd ${name}_kallisto_${dow}
+mkdir 0_fastq
+mv $R1 -t 0_fastq/
+
+### Read trimming & FastQC
+echo "Read trimming and FastQC"
+
+mkdir 1_trimmed_fastq
+cd 1_trimmed_fastq
+trim_galore --fastqc ../0_fastq/$R1 | tee -a ../${name}_logs_${dow}.log
+
+## Generate kallisto index
+echo "kallisto"
+
+kallisto index -i "${annotation%%.fa}.idx" $annotation 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
 
