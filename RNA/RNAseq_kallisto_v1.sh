@@ -63,12 +63,19 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-        kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 --pseudobam -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+
+fi
+ 
+mv abundance.h5 ${name}.h5
+mv abundance.tsv ${name}.tsv
+
+echo "complete"
 
 fi
 
@@ -121,12 +128,12 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i ${annotation%%.fa}.idx -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i "${annotation%%.fa}.idx" --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i "${annotation%%.fa}.idx" --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --pseudobam -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
  
@@ -136,3 +143,4 @@ mv abundance.tsv ${name}.tsv
 echo "complete"
 
 fi
+
