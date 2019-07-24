@@ -3,14 +3,15 @@
 # Use kallisto to perform k-mer based transcript quantification
 # https://www.nature.com/articles/nbt.3519
 # Build annotation index kallisto index -i annotation.idx annotation.fa
+# this version utilizes the --genomebam and  --gtf flags to visulaize pseudo-alignments
 
 set -eu
 
-if [ "$#" -lt 5 ]; then
+if [ "$#" -lt 6 ]; then
 	echo "Missing arguments!"
-	echo "USAGE: kallisto.sh <SE,PE> <R1> <R2> <strandedness> <index> <name>"
+	echo "USAGE: kallisto.sh <SE,PE> <R1> <R2> <strandedness> <index> <gtf> <name>"
 	echo "strand: unstranded, fr_stranded, rf_stranded"
-	echo "EXAMPLE: kallisto.sh PE SRR5724597_1.fastq.gz SRR5724597_2.fastq.gz unstranded AtRTD2_19April2016.idx col0-r1"
+	echo "EXAMPLE: kallisto.sh PE SRR5724597_1.fastq.gz SRR5724597_2.fastq.gz unstranded AtRTD2_19April2016.idx AtRTD2_19April2016.gtf col0-r1"
 exit 1
 fi
 
@@ -22,9 +23,9 @@ dow=$(date +"%F")
 
 if [ "$1" == "SE" ]; then
 	# requirements
-	if [ "$#" -ne 5 ]; then
+	if [ "$#" -ne 6 ]; then
 		echo "Missing required arguments for single-end!"
-		echo "USAGE: kallisto.sh <SE> <R1> <strandedness> <index> <name>"
+		echo "USAGE: kallisto.sh <SE> <R1> <strandedness> <index> <gtf> <name>"
 		exit 1
 	fi
 
@@ -32,13 +33,14 @@ type=$1
 R1=$2
 strand=$3
 annotation=$4
-name=$5
+gtf=$5
+name=$6
 
 echo "##################"
 echo "Performing single-end alignments with kallisto"
 echo "Type: $type"
 echo "Input Files: $R1"
-echo "Annotation: $annotation"
+echo "Annotation: $annotation $gtf"
 echo "Sample: $name"
 echo "Time of analysis: $dow"
 echo "##################"
@@ -64,12 +66,12 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* -b 100 -l 300 -s 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
  
@@ -86,9 +88,9 @@ fi
 
 if [ "$1" == "PE" ]; then
 	# requirements
-	if [ "$#" -ne 6 ]; then
+	if [ "$#" -ne 7 ]; then
 		echo "Missing required arguments for single-end!"
-		echo "USAGE: kallisto.sh <PE> <R1> <R2> <strandedness> <annotation> <name>" 
+		echo "USAGE: kallisto.sh <PE> <R1> <R2> <strandedness> <annotation> <gtf> <name>" 
 		exit 1
 	fi
 
@@ -98,13 +100,14 @@ R1=$2
 R2=$3
 strand=$4
 annotation=$5
-name=$6
+gtf=$6
+name=$7
 
 echo "##################"
 echo "Performing paired-end alignments with kallisto"
 echo "Type: $type"
 echo "Input Files: $R1 $R2"
-echo "Annotation: $annotation"
+echo "Annotation: $annotation $gtf"
 echo "Sample: $name"
 echo "Time of analysis: $dow"
 echo "##################"
@@ -130,12 +133,12 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i $annotation --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+	kallisto quant -i $annotation --fr-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias 1_trimmed_fastq/${R1%%.fastq*}_trimmed.fq* 1_trimmed_fastq/${R2%%.fastq*}_trimmed.fq* -b 100 --genomebam --gtf $gtf -o ./ 2>&1 | tee -a ${name}_logs_${dow}.log
 
 fi
  
