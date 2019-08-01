@@ -1,0 +1,683 @@
+---
+title: "PAP-induced alternative splicing (Subread/edgeR)"
+output: pdf_document
+---
+
+## Aim
+To investigate whether PAP, or its targets (e.g. RCD1), induce alternative splicing.
+
+## Method
+
+Re-analyse existing mRNA-seq dataset using the Arabidopsis Thaliana Reference Transcript Dataset 2 (AtRTD2-Quasi) annotation (Zhang et al 2017). Transcript abundance is assigned per [exon-level](https://github.com/dtrain16/NGS-scripts/blob/master/RNA/RNAseq_featureCounts_AS.sh) across all genes in AtRTD2-QUASI. This padded version of the AtRTD2 annotation was designed specifically for quantifying alternatively spliced (AS) isoforms. These exon-level counts are TMM-normalized and used for quantifying differential splicing in *edgeR* using *diffSpliceDGE* and *topSpliceDGE* (method=Simes, pval = 0.01; gene-level FDRs are produced derived from exon-level tests). Low abundance transcripts are removed prior to normalization and AS testing.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, echo=FALSE, message=FALSE, warning=FALSE)
+options(stringsAsFactors = FALSE)
+
+library(reshape2)
+library(tidyverse)
+library(edgeR) 
+library(VennDiagram)
+library(janitor)
+library(RColorBrewer)
+library(ggbeeswarm)
+library(scatterplot3d)
+
+sal1_dir <- "C:/Users/u4667515/Dropbox/Collab_Projects/sal1 alternative splicing/AS analysis/sal1_xrn23_AS/"
+pap_dir <- "C:/Users/u4667515/Dropbox/Collab_Projects/sal1 alternative splicing/AS analysis/PAP_pharmacological/"
+rrgd_dir <- "C:/Users/u4667515/Dropbox/Collab_Projects/sal1 alternative splicing/AS analysis/excess-light/"
+
+## set exon-level fold-change and p-value threshold for analyses
+exon_threshold = 1.5 # threshold level for exon-level FC
+fdr = 0.01 # FDR set of exon level FC
+
+## Output table
+getAttributeField <- function (x, field, attrsep = ";") {
+     s = strsplit(x, split = attrsep, fixed = TRUE)
+     sapply(s, function(atts) {
+         a = strsplit(atts, split = "=", fixed = TRUE)
+         m = match(field, sapply(a, "[", 1))
+         if (!is.na(m)) {
+             rv = a[[m]][2]
+         }
+         else {
+             rv = as.character(NA)
+         }
+         return(rv)
+     })
+}
+
+gffRead <- function(gffFile, nrows = -1) {
+     cat("Reading ", gffFile, ": ", sep="")
+     gff = read.table(gffFile, sep="\t", as.is=TRUE, quote="",
+     header=FALSE, comment.char="#", nrows = nrows,
+     colClasses=c("character", "character", "character", "integer",
+"integer",
+     "character", "character", "character", "character"))
+     colnames(gff) = c("seqname", "source", "feature", "start", "end",
+             "score", "strand", "frame", "attributes")
+        cat("found", nrow(gff), "rows with classes:",
+        paste(sapply(gff, class), collapse=", "), "\n")
+     stopifnot(!any(is.na(gff$start)), !any(is.na(gff$end)))
+     return(gff)
+}
+
+# read in Araport11 gff3 annotation
+anno <- gffRead("~/Projects/Protocols/IGV genomes/Araport11_GFF3_genes_transposons.201606.gff") %>%
+  subset(feature=='gene') %>%
+  mutate(Name=getAttributeField(attributes, 'Name')) %>%
+  mutate(description=getAttributeField(attributes, 'Note')) %>%
+	mutate(type=getAttributeField(attributes, 'locus_type')) %>%
+	mutate(primary=getAttributeField(attributes, 'full_name')) %>%
+	mutate(alias=getAttributeField(attributes, 'Alias')) %>%
+  select('Name','description','type','primary','alias') 
+```
+
+## Results
+
+#### SAL1 and XRN2XRN3 mutants
+
+```{r}
+data_path <- paste0(sal1_dir)
+countFiles <- dir(path = data_path, pattern = "quasi.counts")
+
+## Define sample groups with descriptive labels from filenames
+sampleGroups <- sapply(strsplit(countFiles, "_"), function(l) l[1])
+lbls <- sapply(strsplit(countFiles, "_quasi"), function(l) l[1])
+
+## build edge input dataframe
+input <- tibble(countFiles) %>%
+  mutate(file_contents = map(countFiles, ~read_delim(file.path(data_path, .),  delim = '\t', skip=1))) %>%
+  unnest() %>%
+  select(-countFiles, -Chr, -End, -Length) %>%
+  gather(sample, raw_counts, -Geneid, -Start, -Strand) %>%
+  na.omit() %>%
+  dcast(formula = Geneid + Start + Strand ~ sample, value.var = 'raw_counts', fun.aggregate = mean)
+
+### re-order exons for genes on minus strand
+output <- NULL
+for(i in unique(input$Geneid)){
+  test <- subset(input, Geneid == i)
+  test$Start <- ifelse(test$Strand == "-", yes=seq(from=nrow(test),to=1,by=-1), no=seq(from=1, to=nrow(test), by =1))
+  output <- rbind(test, output)
+}
+
+exon_no <- select(output, 1:2) %>%
+  group_by(Geneid) %>%
+  summarise(exon_no = sum(!is.na(Geneid)))
+
+## edgeR INPUT 
+y <- DGEList(counts = output[4:ncol(output)], genes=output[c(1:3)], group = sampleGroups, samples = lbls)
+
+### Abundance filter (CPM > 1 in at least 3 samples)
+keep <- rowSums(cpm(y) > 1) > 3
+dge <- y[keep, ]
+
+## Re-calculate lib size based on retained transcripts
+dge$samples$lib.size <- colSums(dge$counts)
+
+# Use sample groups to make design matrix
+design <- model.matrix(~0 + sampleGroups)
+colnames(design) <- unique(sampleGroups)
+
+## TMM Normalization and dispersion estimates
+dge <- calcNormFactors(dge, method = "TMM") %>%
+  estimateDisp(design, robust=TRUE)
+
+# quick cleanup for memory
+rm(list = c('y','input','output','keep'))
+
+## negative binomial GLM to estimate dispersion
+my.contrasts <- makeContrasts(
+  sal1 - WT, 
+  xrn23 - WT,
+levels=design
+)
+
+## fit NB-GLM
+qlfit <- glmQLFit(dge, design, robust=TRUE, dispersion=dge$trended.dispersion)
+
+### alternative splicing
+sp_xrn <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"xrn23 - WT"])
+
+exon_xrn <- tibble(geneid = sp_xrn$genes$Geneid, 
+               start = sp_xrn$genes$Start, 
+               strand = sp_xrn$genes$Strand, 
+               FC = sp_xrn$coefficients, 
+               FDR = sp_xrn$exon.p.value) %>%
+  group_by(geneid,start) %>%
+  summarise(avg = mean(abs(FC)), fc = max(abs(FC)), n=sum(!is.na(FC)), n_sig_exon=sum(FDR < fdr))
+
+## Simes test and filter by exon-level threshold
+simes_xrn <- topSpliceDGE(sp_xrn, test="Simes", n=dim(sp_xrn$gene.genes)[1], FDR = fdr) %>%
+  mutate(max_exon_fc = exon_xrn$fc[match(Geneid, exon_xrn$geneid)]) %>%
+  mutate(n_sig_exon = exon_xrn$n_sig_exon[match(Geneid, exon_xrn$geneid)]) %>%
+  # filter(n_sig_exon > 0 ) %>%  
+  mutate(fc = 2^max_exon_fc) %>%
+  # filter(fc >= exon_threshold) %>%
+  arrange(desc(fc))
+
+# plot some top hits
+par(mfcol = c(2,2), mar=c(6,6,4,4))
+for(i in 1:4){
+  plotSpliceDGE(sp_xrn, geneid = paste(simes_xrn$Geneid[i]))
+}
+par(mfcol = c(1,1))
+
+## xrn23 AS output table
+subset(anno, Name %in% simes_xrn$Geneid) %>%
+mutate(Nexons = simes_xrn$NExons[match(Name, simes_xrn$Geneid)]) %>%
+mutate(FDR = simes_xrn$FDR[match(Name, simes_xrn$Geneid)]) %>%
+write.csv(file=paste("../AS_lists/AStable_xrn23", fdr, "FDR.csv", sep = "_"), row.names = F)
+```
+
+> There are few examples of alternative splicing in *xrn2xrn3*, however these do appear to be genuine AS events. These should not be ignored and warrants investigation of a stronger *xrn3* allele (e.g. *xrn3-8*). 
+> Some do also appear to occur in *alx8* but to a lesser magnitude in *xrn2xrn3*.
+
+![*xrn23* example AT4G39100](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\xrn23\at4g39100.png)
+
+```{r}
+### alternative splicing
+sp_sal1 <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"sal1 - WT"])
+
+exon_sal1 <- tibble(geneid = sp_sal1$genes$Geneid, 
+               start = sp_sal1$genes$Start, 
+               strand = sp_sal1$genes$Strand, 
+               FC = sp_sal1$coefficients, 
+               FDR = sp_sal1$exon.p.value) %>%
+  group_by(geneid,start) %>%
+  summarise(avg = mean(abs(FC)), fc = max(abs(FC)), n=sum(!is.na(FC)), n_sig_exon=sum(FDR < fdr))
+
+## Simes test and filter by exon-level threshold
+simes_sal1 <- topSpliceDGE(sp_sal1, test="Simes", n=dim(sp_sal1$gene.genes)[1], FDR = fdr) %>%
+  mutate(max_exon_fc = exon_sal1$fc[match(Geneid, exon_sal1$geneid)]) %>%
+  mutate(n_sig_exon = exon_sal1$n_sig_exon[match(Geneid, exon_sal1$geneid)]) %>%
+  # filter(n_sig_exon > 0 ) %>%  
+  mutate(fc = 2^max_exon_fc) %>%
+  # filter(fc >= exon_threshold) %>%
+  arrange(desc(fc))
+
+# plot some top hits
+par(mfcol = c(2,2), mar=c(6,6,4,4))
+for(i in 1:4){
+  plotSpliceDGE(sp_sal1, geneid = paste(simes_sal1$Geneid[i]))
+}
+par(mfcol = c(1,1))
+
+## sal1-8 AS output table
+subset(anno, Name %in% simes_sal1$Geneid) %>%
+mutate(Nexons = simes_sal1$NExons[match(Name, simes_xrn$Geneid)]) %>%
+mutate(FDR = simes_sal1$FDR[match(Name, simes_sal1$Geneid)]) %>%
+write.csv(file=paste("../AS_lists/AStable_sal1-8", fdr, "FDR.csv", sep = "_"), row.names = F)
+```
+
+> *sal1* appears to show substantially more alternative splicing. This suggests XRN-independent AS, however, given there is a minor overlap - one possibility is that the weak xrn3-3 allele shows only weak alternative splicing (potentially need xrn3-8 to rule out).
+
+![*sal1* example 1 AT5G58140](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT5G58140.png){width=75%}
+
+
+![*sal1* example 2 AT1G58602](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT1G58602.png){width=75%}
+
+#### Test for AS overlap between *sal1* and *xrn23*?
+
+```{r}
+# check AS overlap
+grid.newpage()
+venn.plot <- draw.pairwise.venn(
+  area1 = nrow(simes_sal1),
+  area2 = nrow(simes_xrn),
+  cross.area = length(Reduce(intersect, list(simes_sal1$Geneid, simes_xrn$Geneid))),
+  category=c("sal1","xrn2xrn3"),
+  fill = c("red","royalblue"),
+  cex = c(1.25,1.25,1.25), cat.cex = c(1.25,1.25))
+
+# overlap considered significant
+phyper(q = 10, m = 406, 19444- 905, k = 17, lower.tail = F)
+```
+
+> Majority of AS in *xrn2xrn3* occur in *sal1*, however, it is clearly more evident in *sal1*.
+> Overlap is considered statistically significant. 
+> Many AS events are visible in *xrn2xrn3* but to much less severity. Thus, likely XRN-independent, but would be worthwhile checking a better *xrn* when available.
+
+## Explore transcript properties that associate with alternative splicing 
+
+#### Transcript abundance
+
+```{r}
+## get average cpm across all samples
+a <- tibble('geneid' = dge$genes$Geneid, 'CPM'=rowMeans(cpm(dge, normalized.lib.sizes = T))) %>%
+  mutate(exon_fc = exon_sal1$fc[match(geneid, exon_sal1$geneid)]) %>%
+  na.omit %>% group_by(geneid) %>% summarise(cpm = mean(CPM), fc = mean(exon_fc))
+
+ggplot(a, aes(x=log2(cpm), y=fc)) +
+  geom_jitter() + ggtitle("Transcript abundance") +
+  scale_x_continuous(name = "log2 CPM") + 
+  scale_y_continuous(name = "Exon fold-change")
+
+cor(x = log2(a$cpm), a$fc)
+```
+
+> Transcript abundance (CPM) does not appear to correlate with exon fold-change for AS transcripts (ie. highly abundant transcripts are not predisposed to AS).
+
+#### Differential gene expression
+
+We can perform Hypergeometic testing (or one-tailed Fisher's exact test) to test for an association between differential expression and alternative splicing. We can also calculate an odds ratio (OR) using Fisher's exact test that quantifies an association between A & B (in this case AS and DEG). 
+
+```{r}
+## get sal1 DEG list
+a <- read.csv("../Additional resources/Supplementary-Table-RNAseq-alx8.csv", skip=1) %>%
+  select(Locus.Identifier, Gene.Model.Type, logFC, adj.P.Val) %>%
+  mutate(ID = sapply(strsplit(as.character(Locus.Identifier), "\\."), function(l) l[1]))
+
+test <- Reduce(intersect, list(simes_sal1$Geneid, a$ID)) # AS / DEG overlap
+as_deg <- length(test) # no. AS & DEG
+as <- nrow(simes_sal1) # no. alternative splice
+deg <- nrow(a) # no. DEG
+total_genes <- nrow(dge$counts) # no. total genes detected
+```
+
+We can make the following contingency matrix and perform the following tests.
+
+|        | DEG  | not DEG | total |
+|--------|------|---------|-------|
+| AS     | 319  | 489     | 808   |
+| not AS | 6068 | 11039   | 17107 |
+| total  | 6387 | 11528   | 17915 |
+
+```{r}
+grid.newpage()
+venn.plot <- draw.pairwise.venn(
+  area1 = nrow(simes_sal1),
+  area2 = nrow(a),
+  cross.area = length(test),
+  category=c("AS","DEG"),
+  fill = c("red","royalblue"),
+  cex = c(1.25,1.25,1.25), cat.cex = c(1.25,1.25)
+  )
+
+## hypergeometric test = probability of getting larger overlap [X > x]; note n-1 used
+phyper(q = 318, m = 6387, n = 19444-6387, k = 808, lower.tail = F)
+
+## how many genes would we need for significance?
+plot(phyper(q = 1:400, m = 6387, n = (17915-6387), k = 808, log.p = F, lower.tail = F), ylab = "p-value", xlab = "Number of genes", xlim = c(200,400))
+abline(h = 0.05, col = "red")
+abline(v = 318, col = 'green')
+mtext(text = "p = 0.05", col = "red")
+
+x <- rbind(c(319, 489), c(6068,11039))
+fisher.test(x)
+```
+
+> Minor association of AS with DEG ~ statistically significant but probably biologically coincidental.
+
+#### Pol-II read-through
+
+We know that Pol-II read-through (RT) is pervasive across the *sal1* transcriptome and could be driving expression of 3' exons and UTRs. Thus, it may be worthwhile to test for an association (e.g. Pol II read-through driving AS).
+
+|        | RT   | not RT  | total |
+|--------|------|---------|-------|
+| AS     | 493  | 315     | 808   |
+| not AS | 9295 | 7812    | 17498 |
+| total  | 9788 | 8127    | 17915 |
+
+```{r}
+## get RT list
+rt <- read_csv("../Additional resources/Crisp2019_Supplementary Datasets S2.csv", skip=4) %>%
+  clean_names() %>%
+  select('gene_id', 'gene_cpm_sal1_8', 'read_through_fc_sal1_8_total_rna_seq', 'read_through_p_adj_sal1_8_total_rna_seq') %>%
+  mutate(gene_id = sapply(strsplit(as.character(gene_id), "\\."), function(l) l[1])) %>%
+  filter(read_through_p_adj_sal1_8_total_rna_seq < 0.05)
+
+## overlap read-through with AS
+grid.newpage()
+venn.plot <- draw.pairwise.venn(
+  area1 = nrow(simes_sal1),
+  area2 = nrow(rt),
+  cross.area = length(Reduce(intersect, list(rt$gene_id, simes_sal1$Geneid))),
+  category=c("AS","Read-through"),
+  fill = c("red","royalblue"),
+  cex = c(1.25,1.25,1.25), cat.cex = c(1.25,1.25)
+  )
+
+## test sig of overlap
+phyper(q=492, m=9788, n=(17915-9788), k=808, lower.tail = F)
+
+## how many genes would we need for significance?
+plot(phyper(q = 1:500, m = 9788, n =(19444-9788), k = 808, log.p = F, lower.tail = F), 
+     ylab = "p-value", xlab = "Number of genes", xlim=c(300,500))
+abline(h = 0.05, v=492, col = c("red","green"))
+
+x <- rbind(c(493, 315), c(9295,7812))
+fisher.test(x)
+```
+
+> RT loci are ~30% more likely to be AS than non-RT
+
+##### Explore RT & AS loci
+
+Do RT-dependent or RT-independent AS events show distinct characteristics?
+
+```{r}
+# categorise and explore RT-dependent and RT-independent AS
+b <- Reduce(intersect, list(rt$gene_id, simes_sal1$Geneid))
+
+# example RT-dependent
+head(subset(simes_sal1, simes_sal1$Geneid %in% b), n=8)
+# example RT-independent
+head(subset(simes_sal1, !(simes_sal1$Geneid %in% b)), n=8)
+```
+
+![RT-dependent example 1 AT2G29630](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT2G29630.png)
+
+
+![RT-independent example 1 AT2G01590](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT2G01590.png)
+
+
+![RT-independent example 2 AT2G34710](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT2G34710.png){width=75%}
+
+```{r}
+## explore characteristics of RT vs non-RT AS
+simes_sal1_rt <- select(simes_sal1, Geneid, Strand, NExons, n_sig_exon, fc) %>%
+  mutate(RT = ifelse(Geneid %in% b, yes = "RT", no = "nonRT")) %>%
+  gather(key, value, -Geneid, -Strand, -RT)
+
+ggplot(simes_sal1_rt, aes(x=RT, y=value, colour=RT)) +
+  geom_quasirandom(groupOnX=TRUE) +
+  facet_wrap(~key, scales = 'free_y')
+```
+
+> RT-dependent and -independent AS events appear characteristically similar
+
+#### Exon usage bias
+
+```{r}
+## generate 5'/3` bias score (exon # / total exon #) using exon level measures
+exon <- data.frame(
+  Geneid = sp_sal1$genes$Geneid, Start = as.numeric(sp_sal1$genes$Start), 
+  Strand = sp_sal1$genes$Strand,FC = as.numeric(sp_sal1$coefficients), 
+  FDR = as.numeric(sp_sal1$exon.p.value)) %>%
+  left_join(exon_no, by="Geneid") %>%
+  mutate(fc = 2^abs(FC)) %>%
+  filter(fc >= exon_threshold) %>%
+  filter(FDR < fdr) %>%
+  mutate(as_pos = ifelse(Strand == "+", yes = (Start/exon_no), no = 1 - (Start/exon_no)))
+
+ggplot(exon, aes(x = as_pos, y = fc)) + geom_jitter() + geom_smooth(formula = y~x, method='lm') + scale_x_continuous(name = "Bias score of AS event")+ scale_y_continuous(name = "FC in exon expression")
+
+summary(lm(formula = fc~as_pos, data = exon))
+```
+
+> There is no positional bias to AS in *sal1*.
+
+#### Does pharmacologically adminstering PAP induce alternative splicing as in *sal1* mutants?
+
+Re-analyse samples from [GSE115951](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE115951).
+
+```{r}
+data_path <- paste0(pap_dir)
+countFiles <- dir(path = data_path, pattern = "quasi.counts")
+
+## Define sample groups with descriptive labels from filenames
+sampleGroups <- sapply(strsplit(countFiles, "_"), function(l) l[1])
+lbls <- sapply(strsplit(countFiles, "_quasi"), function(l) l[1])
+
+## The DGElist object
+input <- tibble(countFiles) %>%
+  mutate(file_contents = map(countFiles, ~read_delim(file.path(data_path, .),  delim = '\t', skip=1))) %>%
+  unnest() %>%
+  select(-countFiles, -Chr, -End, -Length) %>%
+  gather(sample, raw_counts, -Geneid, -Start, -Strand, na.rm=T) %>%
+  mutate(sample = sapply(strsplit(sample, '\\.'), function(l) l[1])) %>%
+  dcast(formula = Geneid + Start + Strand ~ sample, value.var = 'raw_counts', fun.aggregate = mean)
+
+### re-order exons for genes on minus strand
+output <- NULL
+for(i in unique(input$Geneid)){
+  test <- subset(input, Geneid == i)
+  test$Start <- ifelse(test$Strand == "-", yes=seq(from=nrow(test),to=1,by=-1), no=seq(from=1, to=nrow(test), by =1))
+  output <- rbind(test, output)
+}
+
+exon_no <- select(output, 1:2) %>%
+  group_by(Geneid) %>%
+  summarise(exon_no = sum(!is.na(Geneid)))
+
+y <- DGEList(counts = output[4:ncol(output)], genes=output[c(1:3)], group = sampleGroups, samples = lbls)
+
+### Abundance filter (CPM > 1 in at least 3 samples)
+keep <- rowSums(cpm(y) > 1) > 3
+dge <- y[keep, ]
+
+## Re-calculate lib size
+dge$samples$lib.size <- colSums(dge$counts)
+
+# Use sample groups to make design matrix
+design <- model.matrix(~0 + sampleGroups)
+colnames(design) <- unique(sampleGroups)
+
+## TMM Normalization and dispersion estimates
+dge <- calcNormFactors(dge, method = "TMM")
+dge <- estimateDisp(dge, design, robust=TRUE)
+
+# quick cleanup for memory
+rm(list = c('y','input','output','keep'))
+
+### MDS plots
+## define colour per sample group
+col1 <- c("red","blue")
+col1 <- col1[factor(sampleGroups)]
+
+mds <- plotMDS(dge, ndim=3, dim.plot = c(1,2), col=col1, cex=0.75, plot = F)
+
+s3d <- scatterplot3d(x = mds$cmdscale.out[,1:3], main = "3-dimensional MDS", xlab = "dim 1", ylab = "dim 2", zlab = "dim 3", color = col1, type='h', pch=19, lwd=1.5)
+text(s3d$xyz.convert(mds$cmdscale.out[,1:3]), labels=lbls, cex=.6, pos=4, col=col1)
+
+## negative binomial GLM to estimate dispersion
+my.contrasts <- makeContrasts(
+  papli - control, 
+levels=design
+)
+
+## Fit a quasi-likelihood negative binomial generalized log-linear model
+qlfit <- glmQLFit(dge, design, robust=TRUE, dispersion=dge$trended.dispersion)
+
+# plot genewise quasi-likelihood dispersion
+plotQLDisp(qlfit)
+
+### test for differential exon usage
+sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"papli - control"])
+
+## get exon level metrics
+exon_pap <- tibble(geneid = sp$genes$Geneid, 
+               start = sp$genes$Start, 
+               strand = sp$genes$Strand, 
+               FC = sp$coefficients, 
+               FDR = sp$exon.p.value) %>%
+  group_by(geneid,start) %>%
+  summarise(avg = mean(abs(FC)), fc = max(abs(FC)), n=sum(!is.na(FC)), n_sig_exon=sum(FDR < fdr))
+
+## Simes test and filter by exon-level threshold
+pap_simes <- topSpliceDGE(sp, test="Simes", n=dim(sp$gene.genes)[1], FDR = fdr) %>%
+  mutate(max_exon_fc = exon_pap$fc[match(Geneid, exon_pap$geneid)]) %>%
+  mutate(n_sig_exon = exon_pap$n_sig_exon[match(Geneid, exon_pap$geneid)]) %>%
+  # filter(n_sig_exon > 0 ) %>%
+  mutate(fc = 2^max_exon_fc) %>%
+  # filter(fc >= exon_threshold) %>%
+  arrange(desc(fc))
+
+# plot only AS hit
+plotSpliceDGE(sp, geneid = paste(pap_simes$Geneid[1]))
+
+## pap output table
+subset(anno, Name %in% pap_simes$Geneid) %>%
+mutate(Nexons = pap_simes$NExons[match(Name, simes_xrn$Geneid)]) %>%
+mutate(FDR = pap_simes$FDR[match(Name, pap_simes$Geneid)]) %>%
+write.csv(file=paste("../AS_lists/AStable_papli", fdr, "FDR.csv", sep = "_"), row.names = F)
+
+```
+
+#### light-stress
+
+```{r}
+data_path <- paste0(rrgd_dir)
+countFiles <- dir(path = data_path, pattern = "quasi.counts")
+
+## Define sample groups with descriptive labels from filenames
+sampleGroups <- sapply(strsplit(countFiles, "-"), function(l) l[1])
+
+## The DGElist object
+sampleGroups <- sapply(strsplit(countFiles, "_"), function(l) l[1])
+lbls <- sapply(strsplit(countFiles, "_quasi"), function(l) l[1])
+
+input <- tibble(countFiles) %>%
+  mutate(file_contents = map(countFiles, ~read_delim(file.path(data_path, .),  delim = '\t', skip=1))) %>%
+  unnest() %>%
+  select(-countFiles, -Chr, -End, -Length) %>%
+  gather(sample, raw_counts, -Geneid, -Start, -Strand, na.rm=T) %>%
+  mutate(sample = sapply(strsplit(sample, '\\.'), function(l) l[1])) %>%
+  dcast(formula = Geneid + Start + Strand ~ sample, value.var = 'raw_counts', fun.aggregate = mean)
+
+y <- DGEList(counts = input[4:ncol(input)], genes=input[1:3], group = sampleGroups, samples = lbls)
+
+### Abundance filter (CPM > 1 in at least 3 samples)
+keep <- rowSums(cpm(y) > 1) > 3
+dge <- y[keep, ]
+
+## Re-calculate lib size based on retained transcripts
+dge$samples$lib.size <- colSums(dge$counts)
+
+# Use sample groups to make design matrix
+design <- model.matrix(~0 + sampleGroups)
+colnames(design) <- unique(sampleGroups)
+
+## TMM Normalization and dispersion estimates
+dge <- calcNormFactors(dge, method = "TMM") %>%
+  estimateDisp(design, verobse=TRUE, robust=TRUE)
+  
+# quick cleanup for memory
+rm(list = c('y','input','keep'))
+
+### MDS plots
+groups <- unique(as.character(sampleGroups))
+n.reps <- length(sampleGroups)/length(groups)
+mds <- plotMDS(dge, ndim=3, dim.plot = c(1,2), plot = F)
+
+s3d <- scatterplot3d(x = mds$cmdscale.out[,1:3], main = "3-dimensional MDS", xlab = "dim 1", ylab = "dim 2", zlab = "dim 3", color = rep(rainbow(length(groups)), each = n.reps), type='h', pch=19, lwd=1.5)
+text(s3d$xyz.convert(mds$cmdscale.out[,1:3]), labels=sampleGroups, cex=.75, pos=4)
+
+## GLM
+my.contrasts <- makeContrasts(
+  EL60 - control, 
+  levels=design
+)
+
+### test for differential exon usage
+sp <- diffSpliceDGE(qlfit, geneid = "Geneid", exonid = "Start", contrast = my.contrasts[,"EL60 - control"])
+
+## get exon level metrics
+exon <- tibble(geneid = sp$genes$Geneid, 
+               start = sp$genes$Start, 
+               strand = sp$genes$Strand, 
+               FC = sp$coefficients, 
+               FDR = sp$exon.p.value) %>%
+  group_by(geneid,start) %>%
+  summarise(avg = mean(abs(FC)), fc = max(abs(FC)), n=sum(!is.na(FC)), n_sig_exon=sum(FDR < fdr))
+
+## Simes test and filter by exon-level threshold
+simes_hl <- topSpliceDGE(sp, test="Simes", n=dim(sp$gene.genes)[1], FDR = fdr) %>%
+  mutate(max_exon_fc = exon_pap$fc[match(Geneid, exon_pap$geneid)]) %>%
+  mutate(n_sig_exon = exon_pap$n_sig_exon[match(Geneid, exon_pap$geneid)]) %>%
+  # filter(n_sig_exon > 0 ) %>%
+  mutate(fc = 2^max_exon_fc) %>%
+  # filter(fc >= exon_threshold) %>%
+  na.omit() %>%
+  arrange(desc(fc)) 
+
+# plot only AS hit
+par(mar=c(6,6,5,5))
+plotSpliceDGE(sp, geneid = paste(simes_hl$Geneid[1]))
+
+## pap output table
+subset(anno, Name %in% simes_hl$Geneid) %>%
+mutate(Nexons = simes_hl$NExons[match(Name, simes_xrn$Geneid)]) %>%
+mutate(FDR = simes_hl$FDR[match(Name, simes_hl$Geneid)]) %>%
+write.csv(file=paste("../AS_lists/AStable_EL60", fdr, "FDR.csv", sep = "_"), row.names = F)
+
+```
+
+#### Intron retention
+
+Performed kallisto transcript quantification on annotated [TAIR10 introns](ftp://ftp.arabidopsis.org/home/tair/Sequences/blast_datasets/TAIR10_blastsets/) comparing WT vs *sal1* only. Can perform DE-intron calling on output (expressed as TPM).
+
+```{r, eval=FALSE}
+countFiles <- dir(path = data_path, pattern = "tsv")
+
+## Define sample groups with descriptive labels from filenames
+sampleGroups <- sapply(strsplit(countFiles, "-"), function(l) l[1])
+lbls <- sapply(strsplit(countFiles, ".tsv"), function(l) l[1])
+
+## The DGElist object
+y <- readDGE(files = file.path(data_path, countFiles), columns = c(1,5), group = sampleGroups, label=lbls, skip=1)
+
+## abundance filter
+keep <- rowSums(cpm(y) > 1) > 3
+y <- y[keep, ]
+
+## Re-calculate lib size based on retained transcripts
+y$samples$lib.size <- colSums(y$counts)
+
+## TMM Normalization
+y <- calcNormFactors(y, method = "TMM")
+
+## Estimate common, trended and tagwise dispersion
+y <- estimateDisp(y, verobse=TRUE, robust=TRUE)
+
+## plot dispersion estimation
+plotBCV(y)
+
+## perform simple pairwise test
+et <- exactTest(y, dispersion = "trended", pair = 2:1)
+
+## significance table 
+tt <- topTags(et, sort.by = 'logFC', p.value = 0.05, adjust.method = 'bonferroni',  n=Inf)$table
+
+## how many putative cases of intron retention
+dim(tt)
+
+## smear plot
+plotSmear(et, de.tags = rownames(tt), pch=20, cex=0.6, main="Intron expression alx8 vs WT")
+abline(h = c(-1, 0, 1), col = c("dodgerblue", "yellow", "dodgerblue"), lty=2)
+
+## example loci
+head(tt, n = 8)
+
+write.csv(tt, file="../AS_lists/sal1_intron-retention_exact-bonf.csv")
+
+grid.newpage()
+venn.plot <- draw.pairwise.venn(
+  area1 = nrow(simes_sal1),
+  area2 = nrow(tt),
+  cross.area = length(Reduce(intersect, list(simes_sal1$Geneid, 
+              sapply(strsplit(rownames(tt), "\\."), function(l) l[1])))),
+  category=c("AS","IR"),
+  fill = c("yellow","dodgerblue"),
+  cex = c(1.25,1.25,1.25), cat.cex = c(1.25,1.25))
+
+```
+
+> Looks like a reasonable number of cases of intron retention, even when being conservative with Bonferroni correction. There are still some false positives that have low logFCs (these tend to be ~1.1x FC and could be removed with a filter).
+
+![Intron retention example 1 AT3G49130](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\AT3G49130.png)
+
+### Future considerations
+
+- Increased expression of the 3' UTR might alter RNA stability (eg *RCD1* has a 3' UTR peak) through changing secondary structure of the final transcript. Could perform *in silico* prediction of stability of altered transcript isoform. 
+- Testing effects on final protein (activity or translation - eg performing activity assay OR ribosome profiling).
+
+### Genes of interest
+
+![RCD1](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\RCD1.png)
+
+
+
+![NAC017](C:\Users\u4667515\Dropbox\Collab_Projects\sal1 alternative splicing\igv_examples\alx8\NAC017.png)
