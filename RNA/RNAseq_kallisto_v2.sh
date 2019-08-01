@@ -127,6 +127,10 @@ cd 1_trimmed_fastq
 trim_galore --fastqc --fastqc_args "--threads 4" --paired ../0_fastq/$R1 ../0_fastq/$R2 | tee -a ../${name}_logs_${dow}.log
 cd ../
 
+mkdir 2_quant/
+mv 1_trimmed_fastq/*fq.gz 2_quant/
+cd 2_quant/
+
 echo "                      "
 echo "kallisto"
 echo "                      "
