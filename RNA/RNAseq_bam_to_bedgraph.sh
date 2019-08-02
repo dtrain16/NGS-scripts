@@ -100,13 +100,13 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	
 	echo "BAM to bedgraph ..."
 	# unstranded bedgraph
-	bedtools genomecov -bga -split -ibam $smp -g $chrc_sizes > ${smp%%bam}bg
+	bedtools genomecov -bga -split -ibam $smp > ${smp%%bam}bg
 
 	# bg to bigWig
 	echo "bigWig ..."
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
-	rm $smp -v
+	rm $smp ${smp%%bam}bg -v
 
 fi
 
@@ -143,11 +143,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm ${smp%%.bam}*R1*bam -v
-	rm ${smp%%.bam}*R2*bam -v
-	rm ${smp%%.bam}*forward*bam -v
-	rm ${smp%%.bam}*reverse*bam -v
-	rm $smp -v
+	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
+	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam $smp -v
 
 fi
 
@@ -184,10 +181,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm ${smp%%.bam}*R1*bam -v
-	rm ${smp%%.bam}*R2*bam -v
-	rm ${smp%%.bam}*forward*bam -v
-	rm ${smp%%.bam}*reverse*bam -v
+	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
+	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam -v
 	rm $smp -v
 
 fi
