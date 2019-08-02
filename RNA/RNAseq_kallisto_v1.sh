@@ -77,7 +77,8 @@ elif [ $strand == "fr_stranded" ]; then
 else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 50 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
- 
+
+mv *fq.gz ../1_trimmed_fastq/
 mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
 
@@ -147,7 +148,8 @@ elif [ $strand == "fr_stranded" ]; then
 else kallisto quant -i $annotation --rf-stranded -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 50 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
- 
+
+mv *fq.gz ../1_trimmed_fastq/
 mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
 
