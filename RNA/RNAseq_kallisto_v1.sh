@@ -47,6 +47,7 @@ echo "##################"
 mkdir ${name}_kallisto_${dow}
 mv $R1 -t ${name}_kallisto_${dow}
 cd ${name}_kallisto_${dow}
+
 mkdir 0_fastq
 mv $R1 -t 0_fastq/
 

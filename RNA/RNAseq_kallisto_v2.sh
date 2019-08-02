@@ -84,6 +84,8 @@ fi
  
 mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
+mv pseudoalignments.bam	${name}.bam
+mv pseudoalignments.bam.bai ${name}.bam.bai
 
 echo "complete"
 
@@ -156,6 +158,8 @@ fi
  
 mv abundance.h5 ${name}.h5
 mv abundance.tsv ${name}.tsv
+mv pseudoalignments.bam ${name}.bam
+mv pseudoalignments.bam.bai ${name}.bam.bai
 
 echo "complete"
 
