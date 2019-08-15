@@ -83,10 +83,6 @@ else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fas
 fi
 
 mv *fq.gz ../1_trimmed_fastq/
-mv abundance.h5 ${name}_abundance.h5
-mv abundance.tsv ${name}_abundance.tsv
-mv pseudoalignments.bam	${name}.bam
-mv pseudoalignments.bam.bai ${name}.bam.bai
 
 echo "complete"
 
@@ -158,10 +154,6 @@ else kallisto quant -i $annotation --rf-stranded -t 4 --bias ${R1%%.fastq*}_val*
 fi
 
 mv *fq.gz ../1_trimmed_fastq/ 
-mv abundance.h5 ${name}_abundance.h5
-mv abundance.tsv ${name}_abundance.tsv
-mv pseudoalignments.bam ${name}.bam
-mv pseudoalignments.bam.bai ${name}.bam.bai
 
 echo "complete"
 
