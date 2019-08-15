@@ -1,12 +1,9 @@
 #!/bin/bash
 
 # Use ENSEMBL TAIR GFF files to produce annotation files
-wget ftp://ftp.ensemblgenomes.org/pub/release-39/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.39.gff3.gz
+wget ftp://ftp.ensemblgenomes.org/pub/release-44/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.44.gff3.gz
 
-# Make bedfile file of TAIR10 genes
-
-R
-
+####### R
 library(tidyverse)
 
 getAttributeField <- function (x, field, attrsep = ";") {
@@ -28,8 +25,7 @@ gffRead <- function(gffFile, nrows = -1) {
      cat("Reading ", gffFile, ": ", sep="")
      gff = read.table(gffFile, sep="\t", as.is=TRUE, quote="",
      header=FALSE, comment.char="#", nrows = nrows,
-     colClasses=c("character", "character", "character", "integer",
-"integer",
+     colClasses=c("character", "character", "character", "integer","integer",
      "character", "character", "character", "character"))
      colnames(gff) = c("seqname", "source", "feature", "start", "end",
              "score", "strand", "frame", "attributes")
@@ -39,10 +35,7 @@ gffRead <- function(gffFile, nrows = -1) {
      return(gff)
 }
 
-ens <- gffRead('Arabidopsis_thaliana.TAIR10.39.gff3') %>%
-	mutate(seqname=sub("Mt","M", seqname)) %>%
-	mutate(seqname=sub("Pt","C", seqname)) %>%
-	mutate(seqname=paste0('Chr',seqname))
+ens <- gffRead('Arabidopsis_thaliana.TAIR10.44.gff3')
 
 # Chromosome annotation
 chr <- subset(ens,ens$feature=='chromosome') %>%
@@ -54,7 +47,7 @@ gene <- subset(ens, ens$feature == 'gene') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(gene,'TAIR10.39_genes.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(gene,'TAIR10.44_genes.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # mRNA annotation
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -62,5 +55,24 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(mRNA,'TAIR10.39_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mRNA,'TAIR10.44_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+### 5' and 3' UTR annotation
+utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
+	mutate(id = getAttributeField(attributes, 'Parent')) %>%
+	select(seqname, start, end, strand, id, feature)
+
+write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
+## use bedtools getfasta to obtain sequences in utr intervals 
+quit()
+n
+
+####################
+# sortBed -i TAIR10.44_UTR.bed > TAIR10.44_UTR.sorted.bed
+# bedtools getfasta -bedOut -s -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.bed > TAIR10.44_UTR_seq.bed
+
+##########
+
+rm *gff
 
