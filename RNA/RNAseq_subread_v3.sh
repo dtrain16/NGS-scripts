@@ -10,8 +10,8 @@ set -u
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
-echo "USAGE: RNAseq_v0.1.sh <SE,PE> <fastq R1> <R2> <subread indexed genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq ~/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNAseq_v3.sh <SE,PE> <fastq R1> <R2> <subread indexed genome> <fileID output>"
+echo "EXAMPLE: RNAseq_v3.sh SE sample.fastq ~/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
 exit 1
 fi
 
@@ -24,8 +24,8 @@ if [ "$1" == "SE" ]; then
 # requirements
 if [ "$#" -ne 4 ]; then
 echo "Missing required arguments for single-end!"
-echo "USAGE: RNAseq_v0.1.sh <SE> <R1> <subread indexed ref genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq /home/diep/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNAseq_v3.sh <SE> <R1> <subread indexed ref genome> <fileID output>"
+echo "EXAMPLE: RNAseq_v3.sh SE sample.fastq /home/diep/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
 exit 1
 fi
 
@@ -65,8 +65,8 @@ echo "Performing adapter and low-quality read trimming... "
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-# Trim with hard clipping - nextseq500 bias
-trim_galore --fastqc --clip_R1 10 --three_prime_clip_R1 1 ../$fq | tee -a ../${fileID}_logs_${dow}.log
+# Trim with hard clipping for NextSeq500 bias
+trim_galore --fastqc --clip_R1 10 ../$fq | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
@@ -105,8 +105,8 @@ if [ "$1" == "PE" ]; then
 
 if [ "$#" -ne 5 ]; then
 echo "Missing required arguments for paired-end!"
-echo "USAGE: RNA-seq_v0.1.sh <PE> <R1> <R2> <subread indexed genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq $HOME/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNA-seq_v3.sh <PE> <R1> <R2> <subread indexed genome> <fileID output>"
+echo "EXAMPLE: RNAseq_v3.sh SE sample.fastq $HOME/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
 exit 1
 fi
 
@@ -156,8 +156,8 @@ echo ""
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-# Trim with hard clip - nextseq500 bias
-trim_galore --fastqc --paired --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_logs_${dow}.log
+# Trim with hard clip due to Nextseq500 bias
+trim_galore --fastqc --paired --clip_R1 10 ../$fq1 ../$fq2 | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
