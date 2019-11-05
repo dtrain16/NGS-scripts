@@ -1,5 +1,4 @@
 # making dendrograms for Eichten lowD brachy epigenomics
-
 # libraries
 library(tidyverse)
 suppressPackageStartupMessages(library(dendextend))
@@ -18,6 +17,9 @@ i <- "CG_alltiles_merged_2017-05-05.txt"
 
 ## CG = "CG_alltiles_merged_2017-05-05.txt"
 ## CHG = "CHG_alltiles_merged.2017-05-04.txt"
+# colnames(a)[4:ncol(a)] <- sapply(strsplit(colnames(a)[4:ncol(a)], ".fastq"), function(l) l[1])
+# colnames(a)[4:ncol(a)] <- sapply(strsplit(colnames(a)[4:ncol(a)], ".S"), function(l) l[2])
+# colnames(a)[4:ncol(a)] <- paste0("S",colnames(a)[4:ncol(a)])
 ## CHH = "CHH_alltiles_merged.2017-05-09.txt"
 
 a <- read.delim(paste(i)) %>%
@@ -35,7 +37,7 @@ a <- spread(a, acc, avg_met)
 
 # produce correlation matrix & heatmap
 cor_matrix=as.matrix(cor(a[,3:ncol(a)],use='pairwise.complete.obs'))
-pheatmap(cor_matrix, cutree_cols = 7, cutree_rows = 7, annotation_col=my_grps, 
+pheatmap(cor_matrix, cutree_cols = 3, cutree_rows = 3, annotation_col=my_grps, 
 		annotation_row= my_grps, fontsize = 4)
 dev.off()
 
