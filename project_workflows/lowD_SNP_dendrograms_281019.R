@@ -132,12 +132,10 @@ ibs.dis = ssp.geno(geno, filt.dis)
 ibs.dis.imp = distimpute2(ibs.dis, max.dist = 0.2)
 
 ibs.dis.plt = ibs.dis.imp
-ibs.dis.plt$sample.id = paste(lowd_names$anon[match(ibs.dis.imp$sample.id, lowd_names$anon)],
-	lowd_names$acc[match(ibs.dis.imp$sample.id, lowd_names$anon)])
-                              
-hc.dis.plt = snpgdsHCluster(ibs.dis.plt) %>% snpgdsCutTree(label.H = F, label.Z = F)
+ibs.dis.plt$sample.id <- paste(lowd_names$acc[match(ibs.dis.imp$sample.id, lowd_names$anon)])
+hc.dis.plt = snpgdsHCluster(ibs.dis.plt) %>% snpgdsCutTree(z.threshold=20, label.H=F, label.Z=F)
 
-pdf(paste0("GBS-dendro.pdf"), width=70, height=10)
-snpgdsDrawTree(hc.dis.plt)
+pdf("SNP-dendro.pdf")
+snpgdsDrawTree(hc.dis.plt, leaflab="perpendicular")
 dev.off()
 
