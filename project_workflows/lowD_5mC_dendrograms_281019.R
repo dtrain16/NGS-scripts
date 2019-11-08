@@ -41,3 +41,8 @@ pheatmap(cor_matrix, cutree_cols = 3, cutree_rows = 3, annotation_col=my_grps,
 		annotation_row= my_grps, fontsize = 4)
 dev.off()
 
+## SNP relationships
+# based on https://github.com/borevitzlab/brachy-genotyping-notes/blob/master/snprelate.Rmd
+# reformat VCF
+library(SNPRelate)
+
