@@ -1,4 +1,5 @@
 ## check out https://github.com/borevitzlab/brachy-genotyping-notes/blob/master/snprelate.Rmd
+## Produce SNP relationships of Turkish brachypodium lines for Eichten et al 2019
 
 library(SNPRelate)
 library(tidyverse)
