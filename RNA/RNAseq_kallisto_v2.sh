@@ -73,12 +73,12 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 50 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 50 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 50 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
 
@@ -144,12 +144,12 @@ echo "                      "
 
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 50 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 10 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i $annotation --fr-stranded -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 50 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation --fr-stranded -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 10 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 50 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else kallisto quant -i $annotation --rf-stranded -t 4 --bias ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -b 10 --genomebam -g $gtf -c $chr_sizes -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
 
