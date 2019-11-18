@@ -3,6 +3,8 @@
 ## Source GFF files from ENSEMBL Genomes
 wget ftp://ftp.ensemblgenomes.org/pub/release-44/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.44.gff3.gz
 
+gzip -d Arabidopsis_thaliana.TAIR10.44.gff3.gz
+
 #### R
 library(tidyverse)
 
@@ -71,15 +73,13 @@ n
 ########################
 
 ## use bedtools getfasta to obtain UTR sequence
-sortBed -i TAIR10.44_UTR.bed > TAIR10.44_UTR.sorted.bed
-bedtools getfasta -bedOut -s -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.bed > TAIR10.44_UTR_seq.bed
-bedtools groupby -i TAIR10.44_UTR.sorted.bed -g 1,2,3 -c 5,6 -o first,first > TAIR10.44_UTR.sorted.grouped.bed
-
-## UTR DREME files
-bedtools getfasta -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.grouped.bed -fo TAIR10.44_UTR.fa -name
+sortBed -i TAIR10.44_UTR.bed | groupBy -g 1,2,3 -c 5,6 -o first,first > TAIR10.44_UTR.sorted.grouped.bed
 awk '{ if ($5 == "five_prime_UTR") { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
 awk '{ if ($5 == "three_prime_UTR") { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa -name
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa -name
 
 # clean up
-rm *gff
+rm *gff3
+rm TAIR10.44_UTR.sorted.grouped.bed TAIR10.44_UTR.sorted.grouped.5p.bed TAIR10.44_UTR.sorted.grouped.3p.bed
 
