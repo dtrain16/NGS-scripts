@@ -73,9 +73,9 @@ n
 ########################
 
 ## use bedtools getfasta to obtain UTR sequence
-sortBed -i TAIR10.44_UTR.bed | groupBy -g 1,2,3,4 -c 5,6 -o first,first > TAIR10.44_UTR.sorted.grouped.bed
-awk '{ if ($6 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
-awk '{ if ($6 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
+sortBed -i TAIR10.44_UTR.bed | groupBy -g 1,2,3 -c 5,6,4 -o first,first,first > TAIR10.44_UTR.sorted.grouped.bed
+awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
+awk '{ if ($5 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
 
