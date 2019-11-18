@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Use ENSEMBL TAIR GFF files to produce annotation files
+## Source GFF files from ENSEMBL Genomes
 wget ftp://ftp.ensemblgenomes.org/pub/release-44/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.44.gff3.gz
 
-####### R
+#### R
 library(tidyverse)
 
 getAttributeField <- function (x, field, attrsep = ";") {
@@ -13,7 +13,7 @@ getAttributeField <- function (x, field, attrsep = ";") {
          m = match(field, sapply(a, "[", 1))
          if (!is.na(m)) {
              rv = a[[m]][2]
-         }
+	}
          else {
              rv = as.character(NA)
          }
@@ -57,22 +57,29 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'TAIR10.44_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-### 5' and 3' UTR annotation
+# UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
 	mutate(id = getAttributeField(attributes, 'Parent')) %>%
 	select(seqname, start, end, strand, id, feature)
 
 write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
-## use bedtools getfasta to obtain sequences in utr intervals 
 quit()
 n
 
-####################
-# sortBed -i TAIR10.44_UTR.bed > TAIR10.44_UTR.sorted.bed
-# bedtools getfasta -bedOut -s -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.bed > TAIR10.44_UTR_seq.bed
+######################
+########################
 
-##########
+## use bedtools getfasta to obtain UTR sequence
+sortBed -i TAIR10.44_UTR.bed > TAIR10.44_UTR.sorted.bed
+bedtools getfasta -bedOut -s -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.bed > TAIR10.44_UTR_seq.bed
+bedtools groupby -i TAIR10.44_UTR.sorted.bed -g 1,2,3 -c 5,6 -o first,first > TAIR10.44_UTR.sorted.grouped.bed
 
+## UTR DREME files
+bedtools getfasta -fi Athal.TAIR10.44.dna.fa -bed TAIR10.44_UTR.sorted.grouped.bed -fo TAIR10.44_UTR.fa -name
+awk '{ if ($5 == "five_prime_UTR") { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
+awk '{ if ($5 == "three_prime_UTR") { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
+
+# clean up
 rm *gff
 
