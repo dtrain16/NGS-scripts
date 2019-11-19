@@ -69,11 +69,10 @@ write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=
 quit()
 n
 
-######################
 ########################
-
 ## use bedtools getfasta to obtain UTR sequence
-sortBed -i TAIR10.44_UTR.bed | groupBy -g 1,2,3 -c 5,6,4 -o first,first,first > TAIR10.44_UTR.sorted.grouped.bed
+
+sortBed -i TAIR10.44_UTR.bed | groupBy -g 1-3 -c 4,5,6 -o first,first,first | groupBy -g 4-6 -c 1,2,3, -o first,first,last | awk '{ print $4,$5,$6,$2,$3,$1 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
 awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
 awk '{ if ($5 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
