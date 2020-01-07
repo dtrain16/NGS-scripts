@@ -13,12 +13,8 @@ getAttributeField <- function (x, field, attrsep = ";") {
      sapply(s, function(atts) {
          a = strsplit(atts, split = "=", fixed = TRUE)
          m = match(field, sapply(a, "[", 1))
-         if (!is.na(m)) {
-             rv = a[[m]][2]
-	}
-         else {
-             rv = as.character(NA)
-         }
+         if (!is.na(m)) {rv = a[[m]][2]}
+         else {rv = as.character(NA)}
          return(rv)
      })
 }
@@ -62,6 +58,7 @@ write.table(mRNA,'TAIR10.44_mRNA.bed', sep='\t', row.names=F, col.names=F, quote
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
 	mutate(id = getAttributeField(attributes, 'Parent')) %>%
+	mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
 	select(seqname, start, end, strand, id, feature)
 
 write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
@@ -70,15 +67,14 @@ quit()
 n
 
 ########################
-## use bedtools getfasta to obtain UTR sequence
-
-sortBed -i TAIR10.44_UTR.bed | groupBy -g 1-3 -c 4,5,6 -o first,first,first | groupBy -g 4-6 -c 1,2,3, -o first,first,last | awk '{ print $4,$5,$6,$2,$3,$1 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
-awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.5p.bed
-awk '{ if ($5 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed > TAIR10.44_UTR.sorted.grouped.3p.bed
+## use bedtools getfasta to obtain UTR sequences > 10 bp
+####################
+sortBed -i TAIR10.44_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
+awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.5p.bed
+awk '{ if ($5 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.3p.bed
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
 
 # clean up
-rm *gff3
-rm TAIR10.44_UTR.sorted.grouped.bed TAIR10.44_UTR.sorted.grouped.5p.bed TAIR10.44_UTR.sorted.grouped.3p.bed
+rm *gff3 TAIR10.44_UTR.sorted.*.bed
 
