@@ -71,10 +71,10 @@ n
 ####################
 sortBed -i TAIR10.44_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
 awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.5p.bed
-awk '{ if ($5 == "three_prime_UTR" && $3-2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.3p.bed
+awk '{ if ($5 == "three_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.3p.bed
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
 
 # clean up
-rm *gff3 TAIR10.44_UTR.sorted.*.bed
+rm *gff3 TAIR10.44_UTR.sorted.*.bed -v
 
