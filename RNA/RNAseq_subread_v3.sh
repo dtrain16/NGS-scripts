@@ -180,7 +180,7 @@ echo "cleaning..."
 if [[ ${fq1%%.fastq*}* != *.gz ]]; then gzip ${fq1%%.fastq*}* ; fi
 if [[ ${fq2%%.fastq*}* != *.gz ]]; then gzip ${fq2%%.fastq*}* ; fi
 
-mv *trimmed.fq.gz ../2_read_trimming/
+mv *.fq.gz ../2_read_trimming/
 
 echo "Alignment complete"
 
