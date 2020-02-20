@@ -35,9 +35,22 @@ a <- group_by(a, V1, V2, acc) %>%
 # memory allocation too great to pipe
 a <- spread(a, acc, avg_met)
 
+ann_colors <- list(
+	Group = c(Bd21="coral", Clone1="royalblue", Clone2="darkgoldenrod1", 
+	Clone3="darkolivegreen2", Clone4="darkorchid2", Clone5="forestgreen", 
+	Clone6="firebrick1", Clone7="pink", HYB1="coral4", HYB2="bisque2")
+)
+
 # produce correlation matrix & heatmap
 cor_matrix=as.matrix(cor(a[,3:ncol(a)],use='pairwise.complete.obs'))
-pheatmap(cor_matrix, cutree_cols = 3, cutree_rows = 3, annotation_col=my_grps, 
-		annotation_row= my_grps, fontsize = 4)
+pheatmap(cor_matrix, 
+	cutree_cols = 3, 
+	cutree_rows = 3,
+	show_colnames = F,
+	fontsize_row = 5,
+	border_color = NA,
+	annotation_colors = ann_colors,
+	annotation_row = my_grps)
+
 dev.off()
 
