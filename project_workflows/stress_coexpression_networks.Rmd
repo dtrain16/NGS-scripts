@@ -5,16 +5,26 @@ date: "8 January 2019"
 output: pdf_document
 ---
 
+### Aim
+Construct co-expression networks using WGCNA across multiple mRNA sequencing datasets. These networks can be used to identify gene regulatory networks.
+
+### Methods
+Raw reads were obtained from SRA accessiona and trimmed for adapter sequences and low-quality base calls using *Trim Galore!*. Trimmed reads were aligned to the TAIR10 reference genome using *Subjunc*. Subsequently, *featureCounts* assigned raw counts to gene-level features, according to the Araport11 annotation, which were loaded into *edgeR*. Only genes with CPM > 1 for at least 5 samples were carried forward. TMM normalized log2 FPKM values were computed using *edgeR* functions. Batch effects were estimated and removed by fitting an Empirical Bayes-moderated linear regression across controls from each dataset using *empiricalBayesLM*. Adjusted values were re-scaled to have a zero-minimum via unitization ([*x*-min]/range). The coefficient of variation was computed for each gene and those in the lowest quantile were removed from the analysis. Co-expression networks were constructed on the remaining genes using *WGCNA* package functions (1,2). Soft thresholding power was set according to satisfying scale-free topology (R<sup>2</sup> > 0.8). This was used to generate a signed hybrid adjency matrix. Hierarchical clustering of genes was performed using topological overlap matrix as the distance measure. Gene modules were created by dynamic tree cut on the clustering dendrogram without deep split and minimum module size of 40. Modules with highly correlated (distance = [1-Pearson's *r*]/2) eigengene values were merged (distance < 0.1). Module eigengenes were used to relate modules to external sample information and significance was established using Student asymptotic p-values. Gene regulatory networks were constructed with significant (p < 0.05) modules of interest using *TF2Network* (3).
+
+### Results
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(tidy=TRUE, warning=FALSE, message=FALSE)
 options(stringsAsFactors = FALSE)
 
 ## libraries
-library(tidyverse)
-library(edgeR)
-library(gplots)
-library(WGCNA)
-library(clusterSim)
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(edgeR))
+library(pheatmap)
+suppressPackageStartupMessages(library(WGCNA))
+suppressPackageStartupMessages(library(clusterSim))
+suppressPackageStartupMessages(library(factoextra))
+suppressPackageStartupMessages(library(patchwork))
 
 ## extract attribute info from annotation
 getAttributeField <- function (x, field, attrsep = ";") {
@@ -45,6 +55,52 @@ gffRead <- function(gffFile, nrows = -1) {
 }
 
 ## directories
+work_dir <- "~/stress_networks/"
+
+## read in annotation
+anno <- gffRead("~/ref_seqs/Araport11/Araport11_GFF3_genes_transposons.201606.gff") %>%
+  dplyr::select(-source, -score, -frame)
+  
+len <- filter(anno, feature == "gene") %>%
+  mutate(Name=getAttributeField(attributes, 'Name')) %>%
+  dplyr::select(Name, seqname, start, end) %>%
+  mutate(len = end - start)
+
+gene <- filter(anno, feature == "gene") %>%
+  mutate(Name=getAttributeField(attributes, 'Name')) %>%
+  mutate(Primary=getAttributeField(attributes, 'symbol')) %>%
+  mutate(Description=getAttributeField(attributes, 'Note')) %>%
+  mutate(Summary=getAttributeField(attributes, 'curator_summary')) %>%
+  dplyr::select(Name, Primary, Description, Summary)
+
+## extract attribute info from annotation
+getAttributeField <- function (x, field, attrsep = ";") {
+     s = strsplit(x, split = attrsep, fixed = TRUE)
+     sapply(s, function(atts) {
+         a = strsplit(atts, split = "=", fixed = TRUE)
+         m = match(field, sapply(a, "[", 1))
+         if (!is.na(m)) {
+             rv = a[[m]][2]
+         }
+         else {
+             rv = as.character(NA)
+         }
+         return(rv)
+     })
+}
+
+gffRead <- function(gffFile, nrows = -1) {
+     gff = read.table(gffFile, sep="\t", as.is=TRUE, quote="",
+     header=FALSE, comment.char="#", nrows = nrows,
+     colClasses=c("character", "character", "character", "integer","integer",
+     "character", "character", "character", "character"))
+     colnames(gff) = c("seqname", "source", "feature", "start", "end",
+             "score", "strand", "frame", "attributes")
+     stopifnot(!any(is.na(gff$start)), !any(is.na(gff$end)))
+     return(gff)
+}
+
+## directories
 work_dir <- "~/Projects/PostDoc_PEB/Experiments/2019/Exploratory co-expression networks/"
 
 ## read in annotation
@@ -62,39 +118,34 @@ gene <- filter(anno, feature == "gene") %>%
   mutate(Description=getAttributeField(attributes, 'Note')) %>%
   mutate(Summary=getAttributeField(attributes, 'curator_summary')) %>%
   dplyr::select(Name, Primary, Description, Summary)
-```
 
-## Aim
-Perform WGCNA on a combined stress dataset to determine co-expression networks modulated by each stress-type.
-
-1. Quality-filtered reads are first aligned to the TAIR reference using *Subjunc*. Subsequently, *featureCounts* assigns reads to genes (Araport11). 
-2. Here, we use *edgeR* to see sample clustering (predicated fold-changes), filter low-abundance transcripts, and calculate normalized log2 FPKM values for input to WGCNA. 
-3. The *WGCNA* package is then utilized to perform a co-expression analysis. 
-
-```{r}
 ## Count files from featureCounts
 countFiles <- dir(path = file.path(work_dir,"countFiles/"), pattern = ".counts")
 
 ## Define sample groups with descriptive labels from filenames
-sampleGroups <- sapply(strsplit(countFiles, "_"), function(l) l[1])
-lbls <- sapply(strsplit(countFiles, "_genes"), function(l) l[1])
+sampleGroups <- sapply(strsplit(countFiles, "_"), function(l) l[2])
+lbls <- sapply(strsplit(countFiles, "_"), function(l) paste(l[2],l[3], sep='_'))
 
 ## correlate replicates before analysis
 dge <- readDGE(path = file.path(work_dir,"countFiles/"), files = countFiles, columns = c(1,7), group=lbls, skip=1)
 design <- model.matrix(~0 + lbls)
 colnames(design) <- sapply(strsplit(colnames(design),'lbls'), function(l) l[2])
+dge$samples$batch <- sapply(strsplit(rownames(dge$samples),'_'), function(l) l[1])
+rownames(dge$samples) <- sapply(strsplit(rownames(dge$samples),'_'), function(l) paste(l[2],l[3], sep='_'))
+
 logfc <- predFC(dge, design, dispersion = 0.05)
-heatmap.2(cor(logfc), cexRow = 0.8, cexCol = 0.8, trace='none', keysize = 1.5, key.title = "Key")
+
+pheatmap(cor(logfc), cutree_cols = 4, cutree_rows = 4, show_colnames = F, fontsize_row = 4, 
+         annotation_row = dplyr::select(dge$samples, -norm.factors, -group, -files))
 
 # design matrix by sample group
 dge$samples$files <- NULL
-rownames(dge$samples) <- sapply(strsplit(rownames(dge$samples), '_genes'), function(l) l[1])
 dge$samples$group <- sapply(strsplit(as.character(dge$samples$group), "_"), function(l) l[1])
 datTrait <- model.matrix(~0 + sampleGroups)
 colnames(datTrait) <- sapply(strsplit(colnames(datTrait), "Groups"), function(l) l[2])
 
 ## Apply abundance filter and adjust library size
-keep <- rowSums(cpm(dge) > 1) > 3
+keep <- rowSums(cpm(dge) > 1) > 5
 dge <- dge[keep, ]
 dge$samples$lib.size <- colSums(dge$counts)
 
@@ -102,74 +153,37 @@ dge$samples$lib.size <- colSums(dge$counts)
 dge <- calcNormFactors(dge, method = "TMM")
 
 ## NB-dispersion
-dge <- estimateDisp(dge, datTrait, verobse=TRUE, robust=TRUE)
+dge <- estimateDisp(dge, datTrait, robust=TRUE)
 
 ### calculate normalized FPKM/RPKM for input into WGCNA
 dge$genes <- len$len[len$Name %in% rownames(dge)]
 fpkm <- as.data.frame(rpkm(dge, gene.length = dge$genes, normalized.lib.sizes = T, log = T))
 colnames(fpkm) <- sapply(strsplit(colnames(fpkm), '_genes'), function(l) l[1])
-```
-
-## Batch effects
-
-This dataset is a collection of samples across multiple datasets, thus there are bound to be unwanted batch effects. These can be removed using Empirical bayes-moderated linear regression to adjust based on variance across control samples only (read [more](https://peterlangfelder.com/2018/12/02/removal-of-unwanted-variation-based-on-a-subset-of-samples/)). Post-adjustment the data is normalized via unitization (zero minimum).
-
-```{r}
-# add samples batch info
-dge$samples$batch <- as.vector(c(rep(1,1), rep(2,3), rep(1,2), rep(3,3), rep(4,3), 
-                                 rep(1,3), rep(4,3), rep(3,9), rep(2,2)))
 
 # perform empirical-bayes adjustment
 eblm <- empiricalBayesLM(t(fpkm), 
             removedCovariates = dge$samples$batch, 
             fitToSamples = dge$samples$group == "control")
 
-adj_dat <- eblm$adjustedData
-adj_datOLS <- eblm$adjustedData.OLS
-
-# PCA for pre- and post-correction
-svd1 <- svd(t(fpkm), nu=2, nv=0)
-svd2 <- svd(adj_dat, nu=2, nv=0)
-svd3 <- svd(adj_datOLS, nu=2, nv=0)
-cols <- labels2colors(dge$samples$batch)
-cols <- sub(cols, pattern = "yellow", replacement = "red")
-
-# plot results
-par(mar=c(5,5,4,4), mfrow=c(2,2), cex=0.8)
-
-plot(x = svd1$u[,1], y = svd1$u[,2], xlab="PC1", ylab="PC2", main = "Before batch correction", ylim = c(-0.3,0.4),
-     pch = as.numeric(factor(dge$samples$group)), col = cols)
-legend("topright", legend = unique(dge$samples$group), cex = 1, pch = c(1:length(unique(dge$samples$group))))
-# text(x = svd1$u[,1], y = svd1$u[,2], labels=rownames(dge$samples), pos=4, cex=0.8)
-
-plot(x = svd2$u[,1], y = svd2$u[,2], xlab="PC1", ylab="PC2", main = "EB-moderated adjustment", ylim = c(-0.3,0.4),
-     pch = as.numeric(factor(dge$samples$group)), col = cols)
-# legend("topleft", legend = unique(dge$samples$group), pch = c(1:length(unique(dge$samples$group))))
-# text(x = svd2$u[,1], y = svd2$u[,2], labels=rownames(dge$samples), pos=4, cex=0.8)
-
-plot(x = svd3$u[,1], y = svd3$u[,2], xlab="PC1", ylab="PC2", main = "OLS adjusted", ylim = c(-0.3,0.4),
-     pch = as.numeric(factor(dge$samples$group)), col = cols)
-# legend("topleft", legend = unique(dge$samples$group), pch = c(1:length(unique(dge$samples$group))))
-# text(x = svd3$u[,1], y = svd3$u[,2], labels=rownames(dge$samples), pos=4, cex=0.8)
-
-# unitization with zero minimum
-dat.eblm <- clusterSim::data.Normalization(x = adj_dat, type = "n4", normalization="column")
+# re-scale adjusted values with unitization (zero minimum)
+dat.eblm <- clusterSim::data.Normalization(x = eblm$adjustedData, type = "n4", normalization="column")
 dat.eblm <- as.data.frame(t(dat.eblm))
 
+## perform PCA
+pcomp1 <- prcomp(t(fpkm), scale. = T)
+p1 <- fviz_eig(pcomp1)
+p2 <- fviz_pca_ind(pcomp1, repel = T, label="none", habillage=dge$samples$batch, addEllipses=TRUE, ellipse.type = "confidence")
+
+pcomp2 <- prcomp(t(dat.eblm), scale. = T)
+p3 <- fviz_eig(pcomp2)
+p4 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=dge$samples$batch, addEllipses=TRUE, ellipse.type = "confidence")
+
+## visualize pca
+p1 + p2 + p3 + p4 + plot_annotation(title = 'Moderated EB correction (before and after)')
+
 ## cleanup
-rm(len, logfc, eblm, dge, fpkm, anno)
-```
+rm(len, logfc, eblm, fpkm, anno, keep)
 
-> The AEB-moderated and OLS adjustments appear to give very similar results. To avoid overfitting, the WGCNA analysis will utilize the EB-moderated adjustment. 
-
-## WGCNA analysis
-
-Method: 
-
-1. Zhang, B. and Horvath, S. A General Framework for Weighted Gene Co-Expression Network Analysis. Stat. Appl. Genet. Mol. Biol. 4.
-2. Langfelder, P. and Horvath, S. (2008). WGCNA: an R package for weighted correlation network analysis. BMC Bioinforma. 2008 91 9: 559.
-
-```{r}
 # calculate coefficient of variance
 x <- mutate(dat.eblm, genenames = rownames(dat.eblm)) %>%
   mutate(std = apply(X = dat.eblm, MARGIN = 1, FUN = sd)) %>%
@@ -177,7 +191,7 @@ x <- mutate(dat.eblm, genenames = rownames(dat.eblm)) %>%
   mutate(cov = std/avg) %>%
   arrange(desc(cov))
 
-# set threshold for coefficient of variation - filter 25% least variable genes
+# set threshold for coefficient of variation - filter genes in lower quantile of variation
 quantile(x$cov)
 cv = quantile(x$cov)[[2]]
 
@@ -194,9 +208,11 @@ datExpr <- as.data.frame(t(datExpr))
 # number of genes in analysis
 dim(datExpr)
 
-# cluster samples to check for clear outliers
-sampleTree = hclust(dist(datExpr), method = "average")
-plot(sampleTree, main = "Sample clustering to detect outliers", sub = "", xlab = "")
+## re-pca on subset
+pcomp <- prcomp(datExpr, scale. = T)
+p1 <- fviz_eig(pcomp)
+p2 <- fviz_pca_ind(pcomp, repel = T, label="none", habillage=dge$samples$group, addEllipses=TRUE, ellipse.type = "confidence")
+p1 + p2
 
 # qc df (eg mising values, zero-variance genes)
 gsg <- goodSamplesGenes(datExpr)
@@ -204,12 +220,8 @@ gsg$allOK
 
 # cleanup
 collectGarbage()
-rm(svd1, svd2, svd3, adj_dat, adj_datOLS, x, keep, lbls, sampleGroups)
-```
+rm(x, lbls, sampleGroups, dge, p1, p2, p3)
 
-Can now use normalized log2 FPKM values for network construction (after soft-thresholding).
-
-```{r WGCNA 1 network topology and soft-thresholding}
 # analysis of scale free topology by soft-thresholding powers
 powers = c(seq(1, 10, by = 1), seq(12, 28, by = 2))
 r_sq = 0.8
@@ -221,14 +233,12 @@ sft = pickSoftThreshold(datExpr, powerVector = powers)
 par(mfrow = c(1, 2))
 
 # Scale-free topology fit index as a function of the soft-thresholding power
-plot(x = sft$fitIndices[, 1], y = -sign(sft$fitIndices[, 3])*sft$fitIndices[,2], xlab = "Soft Threshold (power)", 
-     ylab = "Scale Free Topology Model Fit,signed R^2", ylim = c(0, 1), type = "n", main = paste("Scale independence"))
+plot(x = sft$fitIndices[, 1], y = -sign(sft$fitIndices[, 3])*sft$fitIndices[,2], xlab = "Soft Threshold (power)", ylab = "Scale Free Topology Model Fit,signed R^2", ylim = c(0, 1), type = "n", main = paste("Scale independence"))
 text(sft$fitIndices[, 1], -sign(sft$fitIndices[, 3])*sft$fitIndices[, 2], labels = powers, col = "red", cex = 0.6)
 abline(h = r_sq, col = "red", lty = 1)
 
 # Mean connectivity as a function of the soft-thresholding power
-plot(sft$fitIndices[, 1], sft$fitIndices[, 5], xlab = "Soft Threshold (power)", ylab = "Mean Connectivity", 
-     type = "n", main = paste("Mean connectivity"))
+plot(sft$fitIndices[, 1], sft$fitIndices[, 5], xlab = "Soft Threshold (power)", ylab = "Mean Connectivity", type = "n", main = paste("Mean connectivity"))
 text(sft$fitIndices[, 1], sft$fitIndices[, 5], labels = powers, col = "red", cex = 0.6)
 
 collectGarbage()
@@ -237,7 +247,7 @@ collectGarbage()
 The above plot depicts an analysis of network topology for various soft-thresholding powers. The left panel shows the scale-free fit index (y-axis) as a function of the soft-thresholding power (x-axis). The right panel displays the mean connectivity (degree, y-axis) as a function of the soft-thresholding power (x-axis). Ideally, we would consider values that lead to a network satisfying scale-free topology at least approximately, e.g. signed R2 > 0.80. Because the summary connectivity measures decline steeply with increasing soft-thresholding power, it is advantageous to choose the lowest power
 that satisfies the approximate scale-free topology criterion.
 
-```{r WGCNA 2 network construction}
+```{r network construction}
 # set soft-thresholding power
 softPower = sft$fitIndices$Power[which(-sign(sft$fitIndices[, 3])*sft$fitIndices[,2] > r_sq)[1]]
 softPower
@@ -253,9 +263,7 @@ hist(k)
 scaleFreePlot(k, main="Check scale free topology\n")
 ```
 
-The left panel shows a histogram of network connectivities. The right panel shows a log-log plot of the same
-histogram. Ideally, we observe an approximate straight line relationship (high R2 value) - evidence for approximate scale free topology. In most applications we find that scale free topology is at least approximately satisfied when a high power is chosen for defining the adjacency matrix. However, it is not necessary that a network satisfies scale free topology:
-
+The left panel shows a histogram of network connectivities. The right panel shows a log-log plot of the same histogram. Ideally, we observe an approximate straight line relationship (high R2 value) - evidence for approximate scale free topology. In most applications we find that scale free topology is at least approximately satisfied when a high power is chosen for defining the adjacency matrix. However, it is not necessary that a network satisfies scale free topology:
 - If the data are comprised of globally very distinct groups of samples (e.g. different tissues types)
 - It may also indicate the presence of array outliers
 
@@ -263,21 +271,18 @@ A “signed hybrid” adjacency is used, where all negative (or zero) correlatio
 
 Below: Signed TOM takes into account possible anti-reinforcing connection strengths that may occur in unsigned networks. Since the anti-reinforcing connection strengths (practically) cannot occur in signed networks, in signed networks the signed and unsigned TOM are (practically) identical.
 
-```{r WGCNA 2.5 network construction}
+```{r hierarchical clustering}
 # use topologial overlap to define dissimilarity
-dissTOM <- TOMdist(adjacenc, TOMType = "signed", TOMDenom = "min")
+dissTOM <- TOMdist(adjacenc, TOMType = "signed")
 
 # perform hierarchical clustering based on TOM dissimilarity
 geneTree <- hclust(as.dist(dissTOM), method = "average")
 
 # Module identification using dynamic tree cut
-dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = 2, minClusterSize = 50)
+dynamicMods <- cutreeDynamic(dendro = geneTree, distM = dissTOM, deepSplit = FALSE, minClusterSize = 40)
 
 # Convert numeric lables into colors
 dynamicColors <- labels2colors(dynamicMods)
-
-# threshold cut height
-MEDissThres = 0.1
 
 # Calculate eigengenes
 MEList = moduleEigengenes(datExpr, colors = dynamicColors, scale = TRUE)
@@ -289,6 +294,9 @@ MEDiss = (1 - cor(MEs, method = "p"))/2
 # Cluster module eigengenes
 METree = hclust(as.dist(MEDiss), method = "average")
 
+# distance threshold
+MEDissThres = 0.1
+
 # Plot the result
 par(mar = c(2, 5, 2, 2), mfrow = c(1, 1), cex = 0.7)
 plot(METree, main = "Clustering of module eigengenes", xlab = "", sub = "")
@@ -299,7 +307,7 @@ collectGarbage()
 
 To quantify co-expression similarity of entire modules, we calculate their eigengenes and cluster them on their correlation. The red line is the merging threshold (`r MEDissThres`); groups of eigengenes below the threshold represent modules whose expression profiles are too similar and should be merged.
 
-```{r WGCNA 3 merging modules}
+```{r merging modules}
 # module merging function
 merge = mergeCloseModules(datExpr, dynamicColors, cutHeight = MEDissThres)
 
@@ -310,41 +318,13 @@ mergedColors = merge$colors
 mergedMEs = merge$newMEs
 colnames(mergedMEs) <- gsub(x = colnames(mergedMEs), pattern = "ME", replacement = "")
 
-# eigengene dendro and adjacency matrix
-par(mar = c(4, 5, 2, 2), mfrow = c(1, 1), cex = 0.6)
-plotEigengeneNetworks(mergedMEs, "", signed = TRUE, marDendro = c(1, 5, 3, 1), marHeatmap = c(5, 5, 1, 2))
+plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors), c("Dynamic", "Merged"), 
+                    dendroLabels = FALSE, hang = 0.03, main = "Gene dendrogram and module colors")
 ```
-
-Visualization of the eigengene network representing the relationships among the modules. First is a hierarchical
-clustering dendrogram of the eigengenes in which the dissimilarity of eigengenes is given by 1-cor. The
-heatmap shows the eigengene adjacency [(1 + cor)/2].
-
-```{r WGCNA 4 visualize modules}
-plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors), c("Dynamic", "Merged"), dendroLabels = FALSE,
-                    hang = 0.03, main = "Gene dendrogram and module colors")
-```
-
 Clustering dendrogram of genes, with dissimilarity based on topological overlap, together with assigned
 merged module colors and the original module colors.
 
-```{r WGCNA 4.5 visualize MEs}
-par(mar = c(2, 2, 5, 2), mfrow = c(2, 2))
-
-# heatmap plots of module expression
-which.module <- colnames(mergedMEs)
-
-for (i in which.module[1:2]) {
-plotMat(t(scale(datExpr[, mergedColors == i])), clabels = T, title = i)
-ME = mergedMEs[, i]
-barplot(ME, col = i, main = "eigengene expression")
-}
-```
-
-Module heatmaps: rows correspond to genes and the columns to samples; green denotes underexpression and red over-expression. Well defined modules results in characteristic band structures since the corresponding genes are highly correlated.
-
-The lower row shows the corresponding module eigengene expression values per sample (examples for 2 modules only). Module eigengene takes on low values where a lot of module genes are under-expressed (green) and high values where a lot of module genes are over-expressed (red). ME can be considered the most representative gene expression profile of the module.
-
-```{r WGCNA 5 relate modules to treatments}
+```{r relate modules to treatments}
 # Define number of genes and samples
 nGenes = ncol(datExpr)
 nSamples = nrow(datExpr)
@@ -354,11 +334,23 @@ moduleTraitCor = cor(mergedMEs, datTrait)
 moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
 
 # Print correlation heatmap between modules and traits
-textMatrix = paste(signif(moduleTraitCor, 1), " (", signif(moduleTraitPvalue,1), ")", sep = "")
+# textMatrix = paste(signif(moduleTraitCor, 1), " (", signif(moduleTraitPvalue,1), ")", sep = "")
+textMatrix = paste(signif(moduleTraitPvalue,1), sep = "")
 dim(textMatrix) = dim(moduleTraitCor)
 
-par(mfrow = c(1, 1), cex = 0.5, mar=c(5,5,5,5))
-labeledHeatmap(Matrix = moduleTraitCor, xLabels = colnames(datTrait), yLabels = which.module, ySymbols = which.module, colors = blueWhiteRed(30), textMatrix = textMatrix, zlim = c(-1, 1), main = paste("Module-trait relationships"))
+which.module <- colnames(mergedMEs)
+
+par(mfrow = c(1, 1), mar=c(2,2,2,2))
+labeledHeatmap(Matrix = moduleTraitCor, 
+               xLabels = colnames(datTrait),
+               yLabels = which.module, 
+               ySymbols = which.module, 
+               colors = blueWhiteRed(20), 
+               textMatrix = textMatrix, 
+               cex.lab = 0.4,
+               cex.text = 0.3,
+               zlim = c(-1, 1), 
+               main = paste("Module-trait relationships"))
 
 # number of genes per module
 table(mergedColors)
@@ -371,7 +363,29 @@ for( i in which.module){
   x[is.na(x)] <- ""
   write_csv(x, path=paste0("module_genelists/",i,".csv"), col_names = T)
 }
+
+a <- as.data.frame(t(datExpr)) %>%
+  rownames_to_column('ID') %>%
+  mutate(module = mergedColors) %>%
+  gather(key, value, -ID, -module) %>%
+  mutate(batch = sapply(strsplit(key, "_"), function(l) l[1])) %>%
+  mutate(treatment = factor(sapply(strsplit(key, "_"), function(l) l[2]))) %>%
+  mutate(rep = sapply(strsplit(key, "_"), function(l) l[3]))
+
+pdf(file = "WGCNA_clusters.pdf", paper = "a4r")
+
+ggplot(a, aes(y=value, x=treatment)) +
+  geom_line() + 
+  facet_wrap(~module) +
+  theme(axis.text.x = element_text(angle=90, size=6))
+
+dev.off()
+
 ```
 
-Module-trait associations. Each row corresponds to a module eigengene, column to a categorical trait. Each
-cell contains the corresponding signed correlation and p-value.
+References
+1. Zhang, B. and Horvath, S. A General Framework for Weighted Gene Co-Expression Network Analysis. Stat. Appl. Genet. Mol. Biol. 4.
+2. Langfelder, P. and Horvath, S. (2008). WGCNA: an R package for weighted correlation network analysis. BMC Bioinforma. 2008 91 9: 559.
+3. Kulkarni, S.R., Vaneechoutte, D., Van de Velde, J., and Vandepoele, K. (2018). TF2Network: predicting transcription factor regulators and gene regulatory networks in Arabidopsis using publicly available binding site information. Nucleic Acids Res. 46: e31–e31.
+
+
