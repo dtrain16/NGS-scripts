@@ -1,9 +1,8 @@
 #!/bin/bash
 
-## Source GFF files from ENSEMBL Genomes
-wget ftp://ftp.ensemblgenomes.org/pub/release-44/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.44.gff3.gz
-
-gzip -d Arabidopsis_thaliana.TAIR10.44.gff3.gz
+## Source GFF files from ENSEMBL Genomes [https://plants.ensembl.org/info/website/ftp/index.html]
+wget ftp://ftp.ensemblgenomes.org/pub/release-46/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.46.gff3.gz
+gzip -d *.gff3.gz
 
 #### R
 library(tidyverse)

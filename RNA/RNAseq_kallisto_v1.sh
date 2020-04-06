@@ -2,7 +2,7 @@
 
 # Use kallisto to perform k-mer based transcript quantification
 # https://www.nature.com/articles/nbt.3519
-# Build annotation index kallisto index -i annotation.idx annotation.fa
+# Build annotation index kallisto index -i annotation.idx -k 21 annotation.fa
 
 set -eu
 
