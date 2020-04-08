@@ -91,7 +91,7 @@ fi
 if [ "$1" == "PE" ]; then
 	# requirements
 	if [ "$#" -ne 6 ]; then
-		echo "Missing required arguments for single-end!"
+		echo "Missing required arguments for paired-end!"
 		echo "USAGE: kallisto.sh <PE> <R1> <R2> <strandedness> <annotation> <name>" 
 		exit 1
 	fi
