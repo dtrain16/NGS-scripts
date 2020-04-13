@@ -3,7 +3,7 @@
 ### kallisto_pipe_v*.sh
 Pipeline for using Kallisto (Bray et al 2016) for alignment-free transcript quantification. See individual version scripts for running updates and changes.
 
-### RNAseq_subread_v*.sh
+### subread_pipe_v*.sh
 Pipeline for using Subread (more specifically Subjunc) for read alignment for subsequent quantification with featureCounts. See individual script version for running changes and modifications.
 
 ### featureCounts.sh

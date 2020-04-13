@@ -1,18 +1,18 @@
 #!/bin/bash
-set -e
-set -u
+set -eu
 
-# RNAseq pipeline; Quality control, align and index raw RNAseq reads for downstream analyses
+# RNAseq pipeline; quality-control, align, and index raw RNA-sequencing reads for downstream analyses
 # based on pedrocrisp/NGS-pipelines/RNAseqPipe3
 
-# Make sure genome index has been built using subread
-# split all.fasta into chromosomes: samtools faidx genome.fasta chrX > chrX.fasta
-# subread-buildindex -o TAIR10_subread_index TAIR10_Chr1.fasta TAIR10_Chr2.fasta TAIR10_Chr3.fasta TAIR10_Chr4.fasta TAIR10_Chr5.fasta TAIR10_ChrC.fasta TAIR10_ChrM.fasta
+# Build subread index
+# Retrieve reference e.g. TAIR10: wget ftp://ftp.ensemblgenomes.org/pub/release-46/plants/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+# split fasta by chromosome: samtools faidx Arabidopsis_thaliana.TAIR10.dna.toplevel.fa 1 > TAIR10_1.fa
+# subread-buildindex -o TAIR10_subread_index TAIR10_1.fa TAIR10_2.fa TAIR10_3.fa TAIR10_4.fa TAIR10_5.fasta TAIR10_Pt.fa TAIR10_Mt.fa
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
-echo "USAGE: RNAseq_v0.1.sh <SE,PE> <fastq R1> <R2> <subread indexed genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq ~/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNAseq_subread_v2.sh <SE/PE> <fastq R1> <R2> <subread index> <fileID>"
+echo "EXAMPLE: RNAseq_subread_v2.sh SE sample.fastq TAIR10_subread_index sample_rep1"
 exit 1
 fi
 
@@ -25,8 +25,8 @@ if [ "$1" == "SE" ]; then
 # requirements
 if [ "$#" -ne 4 ]; then
 echo "Missing required arguments for single-end!"
-echo "USAGE: RNAseq_v0.1.sh <SE> <R1> <subread indexed ref genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq /home/diep/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNAseq_subread_v2.sh <SE> <R1> <subread index> <fileID>"
+echo "EXAMPLE: RNAseq_subread_v2.sh SE sample.fastq TAIR10_subread_index sample_rep1"
 exit 1
 fi
 
@@ -47,9 +47,9 @@ echo "Time of analysis: $dow"
 echo "##################"
 
 # make sample work directory
-mkdir ${fileID}_RNA_${dow}
-mv $fq ${fileID}_RNA_${dow}
-cd ${fileID}_RNA_${dow}
+mkdir ${fileID}_subread_${dow}
+mv $fq ${fileID}_subread_${dow}
+cd ${fileID}_subread_${dow}
 
 if [[ $fq != *.gz ]];then
 gzip $fq
@@ -63,10 +63,10 @@ mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
 
-# adapter and quality trimming with trim_galore
+# read trimming with trimgalore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc ../$fq | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --fastqc --fastqc_args "threads 4" ../$fq | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -105,8 +105,8 @@ if [ "$1" == "PE" ]; then
 
 if [ "$#" -ne 5 ]; then
 echo "Missing required arguments for paired-end!"
-echo "USAGE: RNA-seq_v0.1.sh <PE> <R1> <R2> <subread indexed genome> <fileID output>"
-echo "EXAMPLE: RNAseq_v0.1.sh SE sample.fastq $HOME/TAIR10/chromosomes/TAIR10_subread_index sample-r1"
+echo "USAGE: RNAseq_subread_v2.sh <PE> <R1> <R2> <subread index> <fileID>"
+echo "EXAMPLE: RNAseq_subread_v2.sh PE sample_R1.fq sample_R2.fq TAIR10_subread_index sample_rep1"
 exit 1
 fi
 
@@ -128,10 +128,10 @@ echo "Time of analysis: $dow"
 echo "##################"
 
 # make sample work directory
-mkdir ${fileID}_RNA_${dow}
-mv $fq1 ${fileID}_RNA_${dow}
-mv $fq2 ${fileID}_RNA_${dow}
-cd ${fileID}_RNA_${dow}
+mkdir ${fileID}_subread_${dow}
+mv $fq1 ${fileID}_subread_${dow}
+mv $fq2 ${fileID}_subread_${dow}
+cd ${fileID}_subread_${dow}
 
 if [[ $fq1 != *.gz ]];then
 gzip $fq1
@@ -156,7 +156,7 @@ echo ""
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc --paired ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
+trim_galore --fastqc --fastqc_args "threads 4" --paired ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
 cd ../
 
 mkdir 0_fastq
