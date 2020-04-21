@@ -119,7 +119,7 @@ strng="*_stringtie.out"
 
 if [ ! -z "$ref" ]; then 
 	stringtie --merge -i $strng -G $ref -o "merged_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log; 
-	else stringtie --merge -i $strng -o "merged_stringtie.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
+	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
 fi
 
 ## clean-up
@@ -134,21 +134,21 @@ echo ""
 if [ "$type" == "un" ]; then
 
 for i in $new_smpls; do
-	stringtie $i -eA -G merged_stringtie.gtf -o "${i%%.sorted.bam}_abundance.out 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i -e -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
 	done
 fi
 
 if [ "$type" == "fr" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -eA --fr -G merged_stringtie.gtf -o "${i%%.sorted.bam}_abundance.out 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i -e --fr -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
         done
 fi
 
 if [ "$type" == "rf" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -eA --rf -G merged_stringtie.gtf -o "${i%%.sorted.bam}_abundance.out 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i -e --rf -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
         done
 fi
 
