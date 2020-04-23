@@ -51,7 +51,7 @@ echo "Unstranded library with no reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -62,7 +62,7 @@ echo "Unstranded library with annotation $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie $i -G $ref -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -73,7 +73,7 @@ echo "Forward stranded without reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --fr -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i --fr -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -84,7 +84,7 @@ echo "Forward stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -95,7 +95,7 @@ echo "Reverse stranded with reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --rf -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i --rf -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -106,7 +106,7 @@ echo "Reverse stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out" 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out";
         done
 fi
 
@@ -118,8 +118,8 @@ echo ""
 strng="*_stringtie.out"
 
 if [ ! -z "$ref" ]; then 
-	stringtie --merge -i $strng -G $ref -o "merged_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log; 
-	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie --merge -i $strng -G $ref -o "merged_stringtie_out.gtf"; 
+	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf";
 fi
 
 ## clean-up
@@ -134,23 +134,34 @@ echo ""
 if [ "$type" == "un" ]; then
 
 for i in $new_smpls; do
-	stringtie $i -e -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
+	stringtie $i -e -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
 	done
 fi
 
 if [ "$type" == "fr" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -e --fr -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i -e --fr -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
         done
 fi
 
 if [ "$type" == "rf" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -e --rf -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf" 2>&1 | tee -a ${dow}_stringtie.log;
+        stringtie $i -e --rf -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
         done
 fi
+
+echo "cleaning ..."
+
+for i in $smpls;
+        do
+        if [[ $i != *sorted.bam ]]; then
+                rm "${i%%.bam}.sorted.bam"
+                rm "${i%%.bam}.sorted.bam.bai"
+        fi;
+done
+
 
 echo "Complete!"
 ##############################
