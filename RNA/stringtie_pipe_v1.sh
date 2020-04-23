@@ -32,9 +32,8 @@ for i in $smpls;
 	if [[ $i != *sorted.bam ]]; then 
 		samtools sort -@ 4 $i -o "${i%%.bam}.sorted.bam"
 		fq="${i%%.bam}.sorted.bam"
-		samtools index $fq		
 		new_smpls="$new_smpls $fq";
-	else new_smpls="$smpls";
+	else new_smpls="$new_smpls $i";
 	fi;
 done
 
