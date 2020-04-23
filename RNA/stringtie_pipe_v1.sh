@@ -2,7 +2,7 @@
 set -eu
 
 # StringTie2 pipeline: assemble transcripts using aligned reads (BAM output e.g. from Subjunc or Hisat2), merge assemblies into combined annotation, and quantify transcript abundance (TPM) across each sample in the dataset. 
-# software required: samtools, stringtie.
+# software required: samtools, stringtie, gffcompare.
 
 ## e.g. generate list of sample names 
 ## dir *bam > files.txt
@@ -162,6 +162,21 @@ for i in $smpls;
         fi;
 done
 
+mkdir abundance_estimates
+mv *abund.tab -t abundance_estimates/
+
+if [ ! -z "$ref" ]; then
+
+echo ""
+echo "compare with $ref"
+echo ""
+
+gffcompare -R -r $ref -o strtcmp merged_stringtie_out.gtf
+
+mkdir gffcompare_results
+mv strtcmp* -t gffcompare_results/
+
+fi
 
 echo "Complete!"
 ##############################
