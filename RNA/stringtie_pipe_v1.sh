@@ -133,21 +133,21 @@ echo ""
 if [ "$type" == "un" ]; then
 
 for i in $new_smpls; do
-	stringtie $i -e -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
+	stringtie $i -eB -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
 	done
 fi
 
 if [ "$type" == "fr" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -e --fr -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
+        stringtie $i -eB --fr -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
         done
 fi
 
 if [ "$type" == "rf" ]; then
 
 for i in $new_smpls; do
-        stringtie $i -e --rf -G merged_stringtie_out.gtf -A "${i%%.sorted.bam}_abund.tab" -o "${i%%.sorted.bam}_stringtie_out.gtf";
+        stringtie $i -eB --rf -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
         done
 fi
 
@@ -162,7 +162,7 @@ for i in $smpls;
 done
 
 mkdir abundance_estimates
-mv *abund.tab -t abundance_estimates/
+mv *ctab -t abundance_estimates/
 
 if [ ! -z "$ref" ]; then
 
