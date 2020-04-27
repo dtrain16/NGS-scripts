@@ -157,7 +157,6 @@ for i in $smpls;
         do
         if [[ $i != *sorted.bam ]]; then
                 rm "${i%%.bam}.sorted.bam"
-                rm "${i%%.bam}.sorted.bam.bai"
         fi;
 done
 
