@@ -134,6 +134,7 @@ if [ "$type" == "un" ]; then
 
 for i in $new_smpls; do
 	stringtie $i -eB -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
+	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab
 	done
 fi
 
@@ -141,14 +142,16 @@ if [ "$type" == "fr" ]; then
 
 for i in $new_smpls; do
         stringtie $i -eB --fr -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
-        done
+        mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab
+	done
 fi
 
 if [ "$type" == "rf" ]; then
 
 for i in $new_smpls; do
         stringtie $i -eB --rf -G merged_stringtie_out.gtf -o "${i%%.sorted.bam}_stringtie_out.gtf";
-        done
+        mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab
+	done
 fi
 
 echo "cleaning ..."
@@ -161,7 +164,8 @@ for i in $smpls;
 done
 
 mkdir abundance_estimates
-mv *ctab -t abundance_estimates/
+mv *tdata.ctab -t abundance_estimates/
+rm *ctab
 
 if [ ! -z "$ref" ]; then
 
