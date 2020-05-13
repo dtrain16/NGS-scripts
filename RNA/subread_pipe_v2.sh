@@ -5,9 +5,10 @@ set -eu
 # based on pedrocrisp/NGS-pipelines/RNAseqPipe3
 
 # Build subread index
-# Retrieve reference e.g. TAIR10: wget ftp://ftp.ensemblgenomes.org/pub/release-46/plants/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
-# split fasta by chromosome: samtools faidx Arabidopsis_thaliana.TAIR10.dna.toplevel.fa 1 > TAIR10_1.fa
-# subread-buildindex -o TAIR10_subread_index TAIR10_1.fa TAIR10_2.fa TAIR10_3.fa TAIR10_4.fa TAIR10_5.fasta TAIR10_Pt.fa TAIR10_Mt.fa
+# Retrieve reference e.g. TAIR10: wget ftp://ftp.ensemblgenomes.org/pub/release-47/plants/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+# split fasta by chromosome: samtools faidx Arabidopsis_thaliana.TAIR10.dna.toplevel.fa
+# chromosome length: cut -f1,2 Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.fai > Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.len
+# subread-buildindex -o TAIR10.47_subread_index Arabidopsis_thaliana.TAIR10.dna.toplevel.fa
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"

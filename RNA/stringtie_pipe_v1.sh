@@ -7,7 +7,7 @@ set -eu
 ## e.g. generate list of sample names 
 ## dir *bam > files.txt
 
-if [ "$#" -lt 2 ]; then
+if [ "$#" -lt 3 ]; then
 echo "Missing required arguments!"
 echo "USAGE: stringtie_pipe_v1.sh <sample list> <library strandedness> <reference GFF3/GTF>"
 echo "EXAMPLE: stringtie_pipe_v1.sh files.txt <un / fr / rf> Arabidopsis_thaliana.TAIR10.46.gff3"
