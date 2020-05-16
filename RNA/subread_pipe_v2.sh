@@ -49,13 +49,7 @@ echo "##################"
 
 # make sample work directory
 mkdir ${fileID}_subread_${dow}
-mv $fq ${fileID}_subread_${dow}
 cd ${fileID}_subread_${dow}
-
-if [[ $fq != *.gz ]];then
-gzip $fq
-fq="${fq}.gz"
-fi
 
 # initial fastqc
 mkdir 1_fastqc
@@ -89,7 +83,7 @@ echo "cleaning..."
 
 tmpbam="${fileID}.bam"
 outbam="${fileID}.sorted.bam"
-samtools sort -m 2G ${tmpbam} -o $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+samtools sort -@ 4 -m 2G ${tmpbam} -o $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 rm -v ${tmpbam}
 mv *trimmed.fq.gz ../2_read_trimming/
@@ -130,19 +124,7 @@ echo "##################"
 
 # make sample work directory
 mkdir ${fileID}_subread_${dow}
-mv $fq1 ${fileID}_subread_${dow}
-mv $fq2 ${fileID}_subread_${dow}
 cd ${fileID}_subread_${dow}
-
-if [[ $fq1 != *.gz ]];then
-gzip $fq1
-fq1="${fq1}.gz"
-fi
-
-if [[ $fq2 != *.gz ]];then
-gzip $fq2
-fq2="${fq2}.gz"
-fi
 
 # initial fastqc
 mkdir 1_fastqc
