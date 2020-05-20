@@ -67,7 +67,7 @@ echo "Performing adapter and low-quality read trimming... "
 # read trimming with trimgalore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc --fastqc_args "threads 4" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --fastqc --fastqc_args "-t 4" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -157,7 +157,7 @@ echo ""
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc --fastqc_args "threads 4" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_${dow}.log
+trim_galore --fastqc --fastqc_args "-t 4" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_${dow}.log
 cd ../
 
 mkdir 0_fastq
