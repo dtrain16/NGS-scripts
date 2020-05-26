@@ -1,0 +1,338 @@
+---
+title: "covid19 qPCR analysis"
+date: "23 April 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+options(stringsAsFactors = F)
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE, warning = F, message = F, dpi = 200, fig.width=12, fig.height=8)
+```
+
+## organise libraries and files
+
+```{r}
+## packages
+suppressPackageStartupMessages(require(tidyverse))
+suppressPackageStartupMessages(require(janitor))
+suppressPackageStartupMessages(require(chipPCR))
+
+## working directory
+workdir <- "C://Users/u4667515/Dropbox/Collab_Projects/Covid19"
+setwd(workdir)
+
+## arrange sample information
+
+### RSB LC480
+rsb_data_path <- file.path(workdir, "RawData_v2_standardised/")
+rsb_files_rn <- dir(file.path(workdir, "RawData_v2_standardised/"), pattern = "raw-fluorescence")
+rsb_files_ct <- dir(file.path(workdir, "RawData_v2_standardised/"), pattern = "Ct-values")
+rsb_files_keyfile <- dir(file.path(workdir, "RawData_v2_standardised/"), pattern = "sample-sheet")
+
+## JCSMR TaqMan
+jcsmr_dir <- file.path(workdir, "RawData_JCSMR_v1/")
+jcsmr_data_paths <- file.path(jcsmr_dir, dir(jcsmr_dir))
+jcsmr_files_rn <- dir(jcsmr_data_paths, pattern = "Amplification-Data")
+jcsmr_files_ct <- dir(jcsmr_data_paths, pattern = "Ct-values")
+jcsmr_files_keyfile <- dir(jcsmr_data_paths, pattern = "sample-sheet")
+
+### arrange sample information, fluorescence & ct values
+
+keyfile_rsb <- tibble(filename = rsb_files_keyfile) %>% 
+  mutate( file_contents = map(filename,~ read_delim(file.path(rsb_data_path, .), delim = '\t'))) %>%
+  unnest %>% clean_names %>% 
+  mutate(filename = paste(sapply(strsplit(filename, "_sample"), function(l) l[1]), well, sep='_')) %>% select(-well)
+
+ct_rsb <- tibble(filename = rsb_files_ct) %>% 
+  mutate( file_contents = map(filename,~ read_delim(file.path(rsb_data_path, .), delim = '\t'))) %>%
+  unnest %>% clean_names %>%
+  mutate(probe = ifelse(sapply(strsplit(filename, "_"), function(l) l[4]) == "SYBR", yes = "SYBR", no=probe )) %>% 
+  mutate(filename = paste(sapply(strsplit(filename, "_Ct"), function(l) l[1]), well, sep='_')) %>%
+  select(-well) %>%
+  mutate(plate = sapply(strsplit(filename, "_"), function(l) l[3]))
+
+data_rsb <- tibble(filename = rsb_files_rn) %>% 
+  mutate( file_contents = map(filename,~ read_delim(file.path(rsb_data_path, .), delim = '\t'))) %>%
+  unnest %>% clean_names %>%
+  mutate(filename = paste(sapply(strsplit(filename, "_raw"), function(l) l[1]), well, sep='_')) %>%
+  left_join(keyfile_rsb, by="filename") %>%
+  na.omit %>%                         ## only clear empty wells
+  left_join(ct_rsb, by="filename") %>%
+  mutate(plate = sapply(strsplit(filename, "_"), function(l) l[3])) %>%
+  filter( ct_value != 0 ) ## only wells with correct product
+
+keyfile_jcsmr <- tibble(filename = jcsmr_files_keyfile) %>% 
+  mutate( file_contents = map(filename,~ read_delim(file.path(jcsmr_data_paths, .), delim = ' ', col_names = F))) %>%
+  unnest %>% clean_names %>% rename(well=x1, sample_name=x2, reaction_volume=x3, well_number=x4, dilution=x5) %>%
+  mutate(filename = paste(sapply(strsplit(filename, "_sample"), function(l) l[1]), well_number, sep='_')) %>% 
+  select(-well, -well_number)
+
+ct_jcsmr <- tibble(filename = jcsmr_files_ct) %>% 
+  mutate( file_contents = map(filename,~ read_csv(file.path(jcsmr_data_paths, .), skip = 36))) %>%
+  unnest %>% clean_names %>%
+  select(filename, well, sample_name, target_name, reporter, ct) %>%
+  rename(probe=reporter) %>%
+  mutate(type = sapply(strsplit(filename,"_Ct-values-"), function(l) l[2])) %>%
+  mutate(filename = paste(sapply(strsplit(filename,"_Ct-values-"), function(l) l[1]), well, sep='_')) %>%
+  mutate(type = sapply(strsplit(type, ".csv"), function(l) l[1])) %>%
+  mutate(ct = as.numeric(paste(ifelse(ct == "Undetermined", yes = 0, no = ct)))) %>%
+  spread(type, ct) %>%
+  mutate(plate_name = paste(sapply(strsplit(filename, "_DS"), function(l) l[1]), "DS", sep='_'))
+
+data_jcsmr <- tibble(filename = jcsmr_files_rn) %>% 
+  mutate( file_contents = map(filename,~ read_csv(file.path(jcsmr_data_paths, .), skip = 36, 
+            col_types = list(col_number(), col_number(), col_character(), col_number(), col_number())))) %>%
+  unnest %>% clean_names %>% rename(fluorescence=rn) %>% select(-delta_rn) %>% na.omit %>%
+  mutate(plate_name = sapply(strsplit(filename, "_Amp"), function(l) l[1])) %>%
+  mutate(filename = paste(sapply(strsplit(filename, "_Amp"), function(l) l[1]), well, sep='_')) %>%
+  left_join(keyfile_jcsmr, by="filename") %>%
+  mutate(sample_name = ifelse(is.na(sample_name) == T, 
+                              yes = ct_jcsmr$sample_name[match(filename, ct_jcsmr$filename)],
+                              no = sample_name)) %>%
+  mutate(sample_name = sapply(strsplit(sample_name, "_rep"), function(l) l[1]))
+  
+
+```
+
+## Plot raw fluorescence
+
+```{r, include=FALSE}
+## use this section to plot individual plate fluorescence curves or machine-calculated Ct's to inspect
+plate_ids <- unique(data_rsb$plate)[10]
+
+# ggplot(subset(data_rsb, plate==plate_ids), aes(x=cycle, y=fluorescence, col=probe_amplicon, fill=probe_amplicon)) +
+#   geom_point() + 
+#   geom_vline(xintercept = c(33,38), linetype="dotted", size=0.5)+
+#   facet_wrap(~sample_name, 'free_y') +
+#   geom_smooth(formula = y ~ x^2)
+
+# ggplot(data = subset(data_rsb, cycle ==2 & plate==plate_ids), 
+#        aes(x=sample_name, y=ct_value, col=probe_amplicon, fill=probe_amplicon)) +
+#   geom_point() + 
+#   theme(axis.text.x = element_text(angle=45, hjust=1, size=8)) + 
+#   scale_y_continuous(name = "Ct") +
+#   scale_x_discrete(name = "Sample") + 
+#   coord_cartesian(ylim = c(0,50)) +
+#   geom_hline(yintercept = 38, linetype = "dashed")
+
+plate_name = unique(data_jcsmr$plate_name)[1]
+
+# ggplot(subset(data_jcsmr, plate_name==plate_name), aes(x=cycle, y=fluorescence, col=target_name, fill=target_name)) +
+#   geom_point(size=1) + 
+#   geom_vline(xintercept = c(33,38), linetype="dotted", size=0.5)+
+#   facet_wrap(~sample_name, 'free_y') +
+#   geom_smooth(formula = y ~ x^2)
+
+# ggplot(data = subset(ct_jcsmr, plate_name==plate_name), 
+#        aes(x=sample_name, y=default, col=target_name, fill=target_name)) +
+#   geom_jitter(stat = 'identity') + 
+#   theme(axis.text.x = element_text(angle=45, hjust=1, size=8)) + 
+#   scale_y_continuous(name = "Ct (default)") +
+#   scale_x_discrete(name = "Sample") + 
+#   coord_cartesian(ylim = c(0,50)) +
+#   geom_hline(yintercept = 38, linetype = "dashed")
+# 
+# ggplot(data = subset(ct_jcsmr, plate_name==plate_name), 
+#        aes(x=sample_name, y=manual, col=target_name, fill=target_name)) +
+#   geom_jitter(stat = 'identity') + 
+#   theme(axis.text.x = element_text(angle=45, hjust=1, size=8)) + 
+#   scale_y_continuous(name = "Ct (manual)") +
+#   scale_x_discrete(name = "Sample") + 
+#   coord_cartesian(ylim = c(0,50)) +
+#   geom_hline(yintercept = 38, linetype = "dashed")
+
+```
+
+## chipPCR
+
+#### pre-QC visualization
+
+```{r}
+## Organise fluorescence curves for target plate(s) e.g RSB plate 9
+plate_ids <- unique(data_rsb$plate)[9]
+
+a <- subset(data_rsb, plate == plate_ids)
+
+my_list_rsb <- list()
+
+for(i in unique(a$probe_amplicon)){
+print(i)
+  
+  ## subset amplicons on plate to analyse
+   b <- filter(a, probe_amplicon == i) %>%
+    select(filename, cycle, fluorescence) %>%
+    spread(filename, fluorescence) %>%
+    as.data.frame
+  
+  ## give short form sample name
+  sample_ids <- colnames(b)[2:ncol(b)]
+  sample_ids <- paste(data_rsb$sample_name[match(sample_ids, data_rsb$filename)],i, sep='_')
+  colnames(b)[2:ncol(b)] <- sample_ids
+  
+  ## QC plots
+  # plot(MFIaggr(x=b)) ## plot Mean Fluorescence Intensity by cycle per target per plate
+  # plotCurves(x=b[,1], y=b[,c(2:ncol(b))], type='l', CPP = TRUE) ## initial visual assessment with CPP QC
+  
+  ## keep all data in a list
+  my_list_rsb[[i]] <- b
+
+}
+
+## e.g JCSMR
+plate_name = unique(data_jcsmr$plate_name)[1]
+a <- subset(data_jcsmr, plate_name==plate_name)
+
+my_list_jcsmr <- list()
+
+for(i in unique(a$target_name)){
+print(i)
+  b <- filter(a, target_name == i) %>%
+  select(filename, cycle, fluorescence) %>%
+  spread(filename, fluorescence) %>%
+  as.data.frame
+    
+  ## give short form sample name
+  sample_ids <- colnames(b)[2:ncol(b)]
+  sample_ids <- paste(data_jcsmr$sample_name[match(sample_ids, data_jcsmr$filename)],i,sep='_')
+  colnames(b)[2:ncol(b)] <- sample_ids
+  
+  ## QC plots
+  # plot(MFIaggr(x=b)) ## plot Mean Fluorescence Intensity by cycle per target per plate
+  # plotCurves(x=b[,1], y=b[,c(2:ncol(b))], type='l', CPP = TRUE) ## initial visual assessment with CPP QC
+  
+  my_list_jcsmr[[i]] <- b
+
+}
+
+```
+
+#### RSB data analysis
+
+Standardize data and calculate Ct using threshold method.
+
+```{r}
+par(mfrow=c(3,3))
+
+CPP_list <- list()
+th_list <- list()
+
+for( i in names(my_list_rsb)){
+  a <- my_list_rsb[[i]]
+  
+### CPP functions to pre-process data (e.g. smooth, normalize, background correction)
+res.CPP <- apply(a[, -1], MARGIN = 2, function(l) {CPP(a[, 1], l, 
+                                                       method="savgol",     ## Savitzky-Golay smoothing
+                                                       trans=T,             ## background correction
+                                                       method.reg="lmrob",  ## robust linear reg
+                                                       bg.range = c(1,20),  ## set cycle range for background
+                                                       bg.outliers = T,     ## remove outliers in background
+                                                       method.norm = "none" ## no normalization
+)[["y.norm"]]})
+
+## calculate Cqs using threshold method = 0.1
+th.cyc.CPP <- apply(res.CPP, 2, function(l) {th.cyc(a[, 1], l, r = 0.1)[1, 1]})
+
+matplot(res.CPP, type = "l", xlab = "Cycle", ylab = "Fluorescence", main = paste("CPP\n",i))
+abline(h = 0.1, lty = 2)
+
+}
+par(mfrow=c(1,1))
+```
+
+### Vazyme kit JCSMR data
+
+The data from Vazyme kits are too noisy for reliable normalization (due to inability to diagnose aspecific ampification). Therefore, we cannot use the thresholding method in a consistent manner as above. Instead, we use the smoothed curves to interpolate first- and second-derivative maximums using the five-point stencil method.
+
+We apply three filters to consider Ct values reliable:
+
+1. Reactions with a max fluorescence exceeding a threshold correspoding to the smallest observation of sample quantiles generated from the distribution of fluorescence values across the plate (represented by vertical line on histogram). This threshold value is depicted as a horizontal red line on fluorescence curves.
+2. FDM and SDM are not calculated during background range (<15 cycles)
+3. |SDC - FDM| < 2 - in noisy reactions this difference is generally greater whereas successful reaction show a difference <0.5.
+
+```{r}
+par(mfrow=c(2,2))
+cq <- NULL
+
+for( i in names(my_list_jcsmr)){
+  a <- my_list_jcsmr[[i]]
+  
+### CPP functions to pre-process data (e.g. smooth, normalize, remove background, remove outliers)
+res.CPP <- apply(a[, -1], MARGIN = 2, function(l) {CPP(a[, 1], l,
+                                                       method="supsmu",     ## Friedmann supersmoother
+                                                       trans=T,             ## background slope correction
+                                                       method.reg="lmrob",   ## robust linear reg
+                                                       bg.range = c(1,22),   ## set cycle range for background
+                                                       method.norm = "none", ## no normalization
+                                                       bg.outliers = T      ### remove outliers in background
+)[["y.norm"]]})
+
+threshold = quantile(t(a[,-1]))[[1]]
+hist(t(a[,-1]), breaks = 250, xlab = "Fluorescence", main = "Fluorescence distribution")
+abline(v=threshold, col = "darkred")
+
+## plot smoothed data
+matplot(res.CPP, type = "l", xlab = "Cycle", ylab = "Fluorescence", main = paste("CPP\n",i))
+
+
+  ## interpolate FDM and SDM from smoothed data and hold Cq values
+  for( h in 1:ncol(res.CPP)){
+    b <- clean_names(data.frame(cycle = a$cycle, res.CPP[, h]))
+    res <- inder(b, smooth.method = NULL)
+    summ <- summary(res, print = FALSE)
+    out <- as.data.frame(t(summ))
+    rownames(out) <- colnames(res.CPP)[h]
+    out$max <- max(res[,2])
+    out$threshold <- threshold
+    
+    test <- ifelse(out$max < out$threshold, yes = "bad", no=
+                     ifelse( out$FDM < 15 | out$SDM < 15, yes = "bad" , no =
+                               ifelse( abs(out$SDC-out$FDM)>2, yes = "bad", no = "Good!")))
+
+    cq <- rbind(out, cq)
+    
+    col <- rainbow(4)
+  
+    ## plot all obtained metrics
+    plot(res, 
+  main=ifelse(test == "bad", yes = paste(colnames(res.CPP)[h], "removed!", sep='--'), no = colnames(res.CPP)[h]))
+    abline(v=summ, col = col)
+    text(summ["FDM"]-2, max(b$res_cpp_h)/1.2, paste0("FDM~", round(summ["FDM"], 2)), cex=0.8, col = col[1])
+    text(summ["SDM"]-2, max(b$res_cpp_h)/2, paste0("SDM~", round(summ["SDM"], 2)), cex=0.8, col = col[2])
+    text(summ["SDm"]-2, max(b$res_cpp_h)/3, paste0("SDm~", round(summ["SDm"], 2)), cex=0.8, col = col[3])
+    text(summ["SDC"]-2, max(b$res_cpp_h)/4, paste0("SDC~", round(summ["SDC"], 2)), cex=0.8, col = col[4])
+    abline(h=threshold, col = 'darkred')
+  }
+
+
+}
+
+input <- as.data.frame(cq) %>% rownames_to_column(var = 'sample') %>% 
+  mutate(ct = ifelse(FDM<=15 | SDM<=15, yes = 40, no = SDM)) %>%
+  mutate(ct = ifelse(abs(SDC-FDM)<=2, yes = ct, no = 40)) %>%
+  mutate(ct = ifelse(max < threshold, yes = 40, no = ct)) %>%
+  mutate(sample = sapply(strsplit(sample, "\\."),function(l) l[1]))
+
+lbls1 <- sapply(input$sample, function(l) { regexpr(l, pattern = "Internal Control") })
+lbls1 <- lbls1[lbls1>1]
+lbls2 <- sapply(input$sample, function(l) { regexpr(l, pattern = "N gene") })
+lbls2 <- lbls2[lbls2>1]
+lbls3 <- sapply(input$sample, function(l) { regexpr(l, pattern = "ORF1ab") })
+lbls3 <- lbls3[lbls3>1]
+lbls <- unlist(list(lbls1,lbls2,lbls3))
+
+input <- input %>% 
+  mutate(probe = substr(sample, start = lbls[match(sample, names(lbls))], stop = nchar(sample))) %>%
+  mutate(sample = substr(sample, start = 1, stop= lbls[match(sample, names(lbls))] -2))
+
+par(mfrow=c(1,1))
+
+ggplot(data=input, aes(x=sample, y=ct, colour=sample)) +
+  geom_jitter() + theme_bw() + 
+  theme(axis.text.x = element_text(angle=45, hjust=1, size=7), legend.position = "none") +
+  scale_y_continuous(name = "Ct") +
+  scale_x_discrete(name = "Sample") +
+  facet_wrap(~probe, ncol = 1)
+
+
+```
+
