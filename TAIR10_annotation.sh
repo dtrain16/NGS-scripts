@@ -61,6 +61,7 @@ utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %
 	select(seqname, start, end, strand, id, feature)
 
 write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+bedtools getfasta -bedOut -s -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -bed TAIR10.44_UTR.bed > TAIR.44_UTR_seq.bed
 
 quit()
 n
@@ -71,9 +72,9 @@ n
 sortBed -i TAIR10.44_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
 awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.5p.bed
 awk '{ if ($5 == "three_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.3p.bed
-bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
-bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Athal.TAIR10.44.dna.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
 
 # clean up
-rm *gff3 TAIR10.44_UTR.sorted.*.bed -v
+rm TAIR10.44_UTR.sorted.*.bed -v
 
