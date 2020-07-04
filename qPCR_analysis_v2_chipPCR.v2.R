@@ -13,9 +13,23 @@ suppressPackageStartupMessages(require(janitor))
 suppressPackageStartupMessages(require(chipPCR))
 
 ## file location
-data_paths <- file.path("Raw_data/")
+# data_paths <- file.path("Raw_data/")
 
-## organise files
+# Input folder with trailing slash expected
+inputFolder <- args[1]
+print(inputFolder)
+
+## Split the path into a list
+split_path <- function(x) if (dirname(x)==x) x else c(basename(x),split_path(dirname(x)))
+pathFolders <- split_path(inputFolder)
+pathFolders <- rev(pathFolders)
+print(pathFolders)
+plate_name <- last(pathFolders)
+print(plate_name)
+data_paths <- dirname(inputFolder)
+print(data_paths)
+
+## Organise files
 data_files <- dir(data_paths) %>%
   tibble(filename=.) %>% 
   mutate( dir_contents = map(filename, ~ dir(file.path(data_paths, .)))) %>%
@@ -23,8 +37,10 @@ data_files <- dir(data_paths) %>%
   mutate(test = regexpr(pattern = "Amplification-Data", text = dir_contents)) %>%
   mutate(test2 = regexpr(pattern = "sample-sheet", text = dir_contents))
 
+print(data_files)
+
 ## set plate name to be analysed = folder name
-plate_name <- args[1]
+#plate_name <- args[1]
 outdir <- args[2]
 # plate_name <- unique(data_files$filename)[1] ## testing code
 # outdir <- "chipPCR_output" ## testing code
@@ -34,11 +50,12 @@ if(file.exists(outdir) == F) {dir.create(outdir)}
 dir.create(outdir)
 
 ### generate sample information
-keyfile <- filter(data_files, filename == plate_name) %>%
+keyfile <- data_files %>%
+#keyfile <- filter(data_files, filename == plate_name) %>%
   filter(test2 > 0) %>% 
   select(-test, -test2) %>%
   mutate(file_contents=map(filename,~ read_delim(file.path(data_paths,filename,dir_contents),delim=' ',col_names=F))) %>%
-  unnest(c(file_contents)) %>% clean_names %>% 
+  unnest(c(file_contents)) %>% clean_names  %>% 
   rename(well_name=x1, sample_name=x2, reaction_volume=x3, well_number=x4) %>%
   mutate(filename = paste(sapply(strsplit(filename, "_sample"), function(l) l[1]), well_number, sep='_')) %>% 
   select(-well_number)
