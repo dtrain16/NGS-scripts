@@ -12,16 +12,17 @@ suppressPackageStartupMessages(require(tidyverse))
 suppressPackageStartupMessages(require(janitor))
 suppressPackageStartupMessages(require(chipPCR))
 suppressPackageStartupMessages(require(xlsx)) ## install.packages('xlsx') for reading excel files
+suppressPackageStartupMessages(library(gtools)) ## instal.packages('gtools')
 
 # Input folder with trailing slash expected
 # inputFolder <- args[1]
 inputFile <- args[1]
-# inputFile <- "Raw_data/2020-07-17_Vazyme_Plate1_10ul_384well_QuantStudio12K/V0001CO200717.xlsx"
+# inputFile <- "VazymeNAT/Raw_data/2020-07-17_Vazyme_Plate1_10ul_384well_QuantStudio12K/V0001CO200717.xlsx"
 print(inputFile)
 
 ## output directory
 outdir <- args[2]
-# outdir <- "test"
+# outdir <- "VazymeNAT/test"
 
 if(file.exists(outdir) == F) {dir.create(outdir)}
 
@@ -46,7 +47,7 @@ print(data_files)
 
 ### generate sample information
 keyfile <- read.xlsx(file = inputFile, sheetName = "Sample Setup", 
-                     startRow = 37, colIndex = c(1,3,7)) %>%  clean_names
+                     startRow = 37, colIndex = c(1:3,7)) %>%  clean_names
 keyfile <- filter(keyfile, target_name != "")
 
 ## oragnise amplification data and link to sample information
@@ -56,13 +57,14 @@ amp_data <- read.xlsx(file = inputFile, sheetName = "Amplification Data", startR
 amp_data <- clean_names(amp_data) %>%
   rename(fluorescence=rn) %>%
   na.omit %>% 
+  mutate(well_pos = keyfile$well_position[match(well, keyfile$well)]) %>%
   mutate(sample_name = keyfile$sample_name[match(interaction(well, target_name), interaction(keyfile$well, keyfile$target_name))])
 
 ## assemble reactions per amplicon
 my_list <- list()
 for(i in unique(amp_data$target_name)){
   b <- filter(amp_data, target_name == i) %>%
-    mutate(sample_name = paste(well, sample_name, i, sep='_')) %>%
+    mutate(sample_name = paste(well_pos, sample_name, i, sep='_')) %>%
     select(sample_name, cycle, fluorescence) %>%
     spread(sample_name, fluorescence) %>%
     as.data.frame
@@ -81,12 +83,12 @@ for( i in names(my_list)){
   
   ### CPP functions to pre-process data (e.g. smooth, normalize, remove background, remove outliers)
   res.CPP <- apply(a[, -1], MARGIN = 2, function(l) {CPP(a[, 1], l,
-                                                         method="supsmu",     ## Friedmann supersmoother
+                                                         method="spline",     ## standard cubic spline smooth
                                                          trans=T,             ## background slope correction
                                                          method.reg="lmrob",   ## robust linear reg
                                                          bg.range = c(1,22),   ## set cycle range for background
                                                          method.norm = "none", ## no normalization
-                                                         bg.outliers = T      ### remove outliers in background
+                                                         bg.outliers = F  ## do not remove background outliers
   )[["y.norm"]]})
   
   threshold = quantile(t(a[,-1]))[[1]]
@@ -130,24 +132,26 @@ for( i in names(my_list)){
 
 dev.off()
 par(mfrow=c(1,1))
+
 #######################
 ## assemble Cts and apply QC filters
 input <- as.data.frame(cq) %>% 
-  mutate(Ct = ifelse(FDM<=15 | SDM<=15, yes = 40, no = SDM)) %>%
-  mutate(Ct = ifelse(abs(SDC-FDM)<=2, yes = Ct, no = 40)) %>%
-  mutate(Ct = ifelse(max < threshold, yes = 40, no = Ct)) %>%
+  mutate(Ct = ifelse(FDM<=15 | SDM<=15, yes = 0, no = SDM)) %>%
+  mutate(Ct = ifelse(max < threshold, yes = 0, no = Ct)) %>%
   mutate(target = sapply(strsplit(sample, "_"), function(l) l[3])) %>%
-  mutate(sample = sapply(strsplit(sample, "_"), function(l) paste(l[1],l[2], sep = '_')))
+  mutate(sample = sapply(strsplit(sample, "_"), function(l) paste(l[1],l[2], sep = '_'))) %>%
+  mutate(well = sapply(strsplit(sample, "_"), function(l) l[1])) %>%
+  mutate(well = factor(well, levels = mixedsort(unique(well)))) %>%
+  arrange(well)
 
 ## output Ct plot per sample
 pdf(file = paste0(file.path(outdir,plate_name), '_Ctvalues.pdf'))
 print(
-  ggplot(data=input, aes(x=sample, y=Ct, colour=sample)) +
-    geom_jitter() + theme_bw() +
-    theme(axis.text.x = element_text(angle=45, hjust=1, size=7), legend.position = "none") +
+  ggplot(data=input, aes(x=well, y=Ct, colour=target)) +
+    geom_jitter(size=1) + theme_bw() +
+    theme(axis.text.x = element_text(angle=45, hjust=1, size=8)) +
     scale_y_continuous(name = "Ct") +
-    scale_x_discrete(name = "Sample") +
-    facet_wrap(~target, ncol = 1)
+    scale_x_discrete(name = "Sample")
 )
 dev.off()
 
