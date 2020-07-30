@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Source GFF files from ENSEMBL Genomes [https://plants.ensembl.org/info/website/ftp/index.html]
-wget ftp://ftp.ensemblgenomes.org/pub/release-46/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.46.gff3.gz
+ftp://ftp.ensemblgenomes.org/pub/release-47/plants/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.47.gff3.gz
 gzip -d *.gff3.gz
 
 #### R
@@ -32,7 +32,7 @@ gffRead <- function(gffFile, nrows = -1) {
      return(gff)
 }
 
-ens <- gffRead('Arabidopsis_thaliana.TAIR10.44.gff3')
+ens <- gffRead('Arabidopsis_thaliana.TAIR10.47.gff3')
 
 # Chromosome annotation
 chr <- subset(ens,ens$feature=='chromosome') %>%
@@ -44,7 +44,7 @@ gene <- subset(ens, ens$feature == 'gene') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(gene,'TAIR10.44_genes.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(gene,'TAIR10.47_genes.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # mRNA annotation
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -52,7 +52,7 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(mRNA,'TAIR10.44_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mRNA,'TAIR10.47_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
@@ -60,8 +60,7 @@ utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %
 	mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
 	select(seqname, start, end, strand, id, feature)
 
-write.table(utr, "TAIR10.44_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
-bedtools getfasta -bedOut -s -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -bed TAIR10.44_UTR.bed > TAIR.44_UTR_seq.bed
+write.table(utr, "TAIR10.47_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 quit()
 n
@@ -69,12 +68,18 @@ n
 ########################
 ## use bedtools getfasta to obtain UTR sequences > 10 bp
 ####################
-sortBed -i TAIR10.44_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10.44_UTR.sorted.grouped.bed
-awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.5p.bed
-awk '{ if ($5 == "three_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.44_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.44_UTR.sorted.grouped.3p.bed
-bedtools getfasta -fi $HOME/ref_seqs/TAIR10/HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.5p.bed -fo TAIR10.44_5pUTR.fa
-bedtools getfasta -fi $HOME/ref_seqs/TAIR10/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.44_UTR.sorted.grouped.3p.bed -fo TAIR10.44_3pUTR.fa
+bedtools getfasta -bedOut -s -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -bed TAIR10.47_UTR.bed > TAIR10.47_UTR_seq.bed
+
+sortBed -i TAIR10.47_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10.47_UTR.sorted.grouped.bed
+
+awk '{ if ($5 == "five_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.47_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.47_UTR.sorted.grouped.5p.bed
+
+awk '{ if ($5 == "three_prime_UTR" && $3-$2 > 10) { print } }' TAIR10.47_UTR.sorted.grouped.bed | awk '!a[$4]++' > TAIR10.47_UTR.sorted.grouped.3p.bed
+
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.47_UTR.sorted.grouped.5p.bed -fo TAIR10.47_5pUTR.fa
+
+bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10.47_UTR.sorted.grouped.3p.bed -fo TAIR10.47_3pUTR.fa
 
 # clean up
-rm TAIR10.44_UTR.sorted.*.bed -v
+rm TAIR10.47_UTR.sorted.*.bed -v
 
