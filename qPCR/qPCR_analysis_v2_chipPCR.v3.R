@@ -16,12 +16,12 @@ suppressPackageStartupMessages(library(gtools))
 suppressPackageStartupMessages(library(patchwork))
 
 # Input folder with trailing slash expected
-# inputFile <- args[1]
-inputFile <- "VazymeNAT/Raw_data/2020-07-17_Vazyme_Plate1_10ul_384well_QuantStudio12K/V0001CO200717.xlsx"
+inputFile <- args[1]
+# inputFile <- "VazymeNAT/Raw_data/200804 - Magnetic bead test_QuantStudio 12K Flex/200804 - Magnetic bead test_QuantStudio 12K Flex_export.xls"
 
 ## output directory
-# outdir <- args[2]
-outdir <- "VazymeNAT/test"
+outdir <- args[2]
+# outdir <- "VazymeNAT/test"
 
 if(file.exists(outdir) == F) {dir.create(outdir)}
 
@@ -45,13 +45,19 @@ data_files <- dir(data_paths) %>%
 print(data_files)
 
 ### generate sample information
-keyfile <- read.xlsx(file = inputFile, sheetName = "Sample Setup", 
-                     startRow = 37, colIndex = c(1:3,7)) %>%  clean_names
+test <- read.xlsx(file = inputFile, sheetName = "Sample Setup", header = F)
+srtrw <- as.numeric(row.names(test[test$X1 == "Well",]))
+
+keyfile <- read.xlsx(file = inputFile, sheetName = "Sample Setup", startRow = srtrw, 
+                     colIndex = c(1:3,7)) %>%  clean_names
 keyfile <- filter(keyfile, target_name != "")
 
 ###################
 ## oragnise amplification data and link to sample information
-amp_data <- read.xlsx(file = inputFile, sheetName = "Amplification Data", startRow = 37, 
+test <- read.xlsx(file = inputFile, sheetName = "Amplification Data", header = F)
+srtrw <- as.numeric(row.names(test[test$X1 == "Well",]))
+
+amp_data <- read.xlsx(file = inputFile, sheetName = "Amplification Data", startRow = srtrw, 
                       colIndex = c(1:4), colClasses = c("numeric","numeric","character","numeric"))
 
 amp_data <- clean_names(amp_data) %>%
@@ -81,15 +87,16 @@ cq <- NULL
 
 for( i in names(my_list)){
   a <- my_list[[i]]
+  a <- a[-1, ]
   
   ### CPP functions to pre-process data (e.g. smooth, normalize, remove background, remove outliers)
   res.CPP <- apply(a[, -1], MARGIN = 2, function(l) {CPP(a[, 1], l,
-                                                         method="spline",     ## standard cubic spline smooth
-                                                         trans=T,             ## background slope correction
-                                                         method.reg="lmrob",   ## robust linear reg
-                                                         bg.range = c(0,22),   ## set cycle range for background
-                                                         method.norm = "none", ## no normalization
-                                                         bg.outliers = F  ## do not remove background outliers
+                                              method="spline",     ## standard cubic spline smooth
+                                              trans=T,             ## background slope correction
+                                              method.reg="lmrob",   ## robust linear reg
+                                              bg.range = c(0,20),   ## set cycle range for background
+                                              method.norm = "none", ## no normalization
+                                              bg.outliers = F  ## do not remove background outliers
   )[["y.norm"]]})
   
   threshold = quantile(t(a[,-1]))[[1]]
@@ -133,7 +140,7 @@ a1 <- ggplot(data=input, aes(x=well, y=Ct, colour=target)) +
   coord_cartesian(ylim = c(0,50)) +
   scale_x_discrete(name = "Sample") +
   ggtitle("Ct values") +
-  theme(legend.position = "right")
+  theme(legend.position = "bottom")
 
 ## raw amplification data
 tmp <- mutate(amp_data, sample_name = sapply(strsplit(sample_name, ' '), function(l) l[1])) %>%
@@ -142,7 +149,7 @@ tmp <- mutate(amp_data, sample_name = sapply(strsplit(sample_name, ' '), functio
 a2 <- ggplot(data=tmp) + aes(x=cycle, y=fluorescence, colour=sample_name) + theme_bw() + 
   geom_point(size=0.4, alpha=0.4) + 
   geom_vline(xintercept = c(32,38), linetype = 'longdash', colour='black') +
-  theme(legend.position = "right") +
+  theme(legend.position = "none") +
   facet_wrap(~target_name, ncol = 2) + 
   ggtitle(paste0(plate_name, " Raw data"))
 
@@ -153,13 +160,14 @@ par(mfrow = c(3,2))
 ## Repeat CPP to make plots
 for( i in names(my_list)){
   a <- my_list[[i]]
+  a <- a[-1, ]
   
   ### CPP functions to pre-process data (e.g. smooth, normalize, remove background, remove outliers)
   res.CPP <- apply(a[, -1], MARGIN = 2, function(l) {CPP(a[, 1], l,
                                         method="spline",     ## standard cubic spline smooth
                                         trans=T,             ## background slope correction
                                         method.reg="lmrob",   ## robust linear reg
-                                        bg.range = c(0,22),   ## set cycle range for background
+                                        bg.range = c(0,20),   ## set cycle range for background
                                         method.norm = "none", ## no normalization
                                         bg.outliers = F  ## do not remove background outliers
   )[["y.norm"]]})
