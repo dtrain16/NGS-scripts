@@ -2,7 +2,7 @@
 
 ## Derive Ct values from raw fluorescence curves using chipPCR 5-point stencil 
 ## to interpolate second derivative max (Ct value) per reaction.
-options(echo=T, stringsAsFactors = FALSE)
+options(echo=T, stringsAsFactors = FALSE, java.parameters = "- Xmx2g")
 args=commandArgs(trailingOnly=T)
 print(args)
 
@@ -14,10 +14,13 @@ suppressPackageStartupMessages(require(xlsx))
 suppressPackageStartupMessages(library(gtools))
 suppressPackageStartupMessages(library(patchwork))
 
-# Input file
+# Input folder with trailing slash expected
 inputFile <- args[1]
+# inputFile <- "VazymeNAT/Raw_data/2020-07-17_Vazyme_Plate1_10ul_384well_QuantStudio12K/V0001CO200717.xlsx"
+
 ## output directory
 outdir <- args[2]
+# outdir <- "VazymeNAT/test"
 
 if(file.exists(outdir) == F) {dir.create(outdir)}
 
