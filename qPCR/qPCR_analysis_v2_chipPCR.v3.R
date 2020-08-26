@@ -2,8 +2,7 @@
 
 ## Derive Ct values from raw fluorescence curves using chipPCR 5-point stencil 
 ## to interpolate second derivative max (Ct value) per reaction.
-
-options(echo=T)
+options(echo=T, stringsAsFactors = FALSE)
 args=commandArgs(trailingOnly=T)
 print(args)
 
@@ -15,13 +14,10 @@ suppressPackageStartupMessages(require(xlsx))
 suppressPackageStartupMessages(library(gtools))
 suppressPackageStartupMessages(library(patchwork))
 
-# Input folder with trailing slash expected
+# Input file
 inputFile <- args[1]
-# inputFile <- "VazymeNAT/Raw_data/200804 - Magnetic bead test_QuantStudio 12K Flex/200804 - Magnetic bead test_QuantStudio 12K Flex_export.xls"
-
 ## output directory
 outdir <- args[2]
-# outdir <- "VazymeNAT/test"
 
 if(file.exists(outdir) == F) {dir.create(outdir)}
 
@@ -49,7 +45,8 @@ test <- read.xlsx(file = inputFile, sheetName = "Sample Setup", header = F)
 srtrw <- as.numeric(row.names(test[test$X1 == "Well",]))
 
 keyfile <- read.xlsx(file = inputFile, sheetName = "Sample Setup", startRow = srtrw, 
-                     colIndex = c(1:3,7)) %>%  clean_names
+                     colIndex = c(1:3,7), 
+                     colClasses = c("character","character","character","character")) %>%  clean_names
 keyfile <- filter(keyfile, target_name != "")
 
 ###################
