@@ -1,17 +1,28 @@
 #!/bin/bash
-set -eu
+set -u
 
 # Performs event-based splicing analysis using SUPPA2 
 # https://github.com/comprna/SUPPA#command-and-subcommand-structure
 # tutorial: https://github.com/comprna/SUPPA/wiki/SUPPA2-tutorial
 
+if [ "$#" -lt 5 ]; then
+echo "Missing arguments!"
+echo "USAGE: SUPPA_pipe_v1.sh <annotation> <file dir> <group1> <group2> <name>"
+echo "EXAMPLE: SUPPA_pipe_v1.sh $HOME/ref_seqs/AtRTD2_QUASI_19April2016.gtf $HOME/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
+exit 1
+fi
+
 #### Parameters
 ## annotation file
-I="$HOME/ref_seqs/AtRTD2/AtRTD2_QUASI_19April2016.gtf"
-# events output name
-N="RTD2-quasi"
-# locate processed data abundance data, organised into individual folder per sample (see kallisto_v1.sh)
-S="$HOME/ws/sal1_AS/raw_files/"
+I=$1
+## events output name
+N=$5
+## kallisto quant files
+S=$2
+# group 1 IDs
+grp1=$3
+# group 2 IDs
+grp2=$4
 
 ## quantification
 mkdir kallisto_output
@@ -27,6 +38,10 @@ python3.5 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i kallisto_output/*/abundan
 
 mkdir generateEvents
 cd generateEvents
+
+## generate transcript events
+python3.5 ~/bin/SUPPA-2.3/suppa.py generateEvents -i $I -o $N -f ioi
+M="${N}.ioi"
 
 ## generate local AS events
 python3.5 ~/bin/SUPPA-2.3/suppa.py generateEvents -i $I -o $N -f ioe -e SE SS MX RI FL
@@ -50,9 +65,14 @@ cd ../
 python3.5 ~/bin/SUPPA-2.3/suppa.py psiPerEvent -i $N -e iso_tpm.txt -o ${N%%.allevents*}_events
 
 ### Differential splicing with local events
-# split samples
-Rscript $HOME/bin/SUPPA-2.3/scripts/split_file.R iso_tpm.txt col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 col0_iso.tpm grp7_iso.tpm -i
+## PSI and TPM per condition
+Rscript $HOME/scripts/RNA/split_file.R ./iso_tpm.txt $grp1 $grp2 ${grp1%%_rep*}_iso.tpm ${grp2%%_rep*}_iso.tpm
 
-~/bin/SUPPA-2.3/scripts/split_file.R ${N%%.allevents*}_events.psi col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 col0_events.psi grp7_events.psi -e
+Rscript $HOME/scripts/RNA/split_file.R ./${N%%.allevents*}_events.psi $grp1 $grp2 ${grp1%%_rep*}_events.psi ${grp2%%_rep*}_events.psi
 
+## differential splicing analysis
+python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $N -p ${grp2%%_rep*}_events.psi ${grp1%%_rep*}_events.psi -e ${grp2%%_rep*}_iso.tpm ${grp1%%_rep*}_iso.tpm -o ${N%%.ioe}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice
+
+## .dpsi gives the DeltaPSI as the difference of the mean PSI between conditions, and the p_value of this difference.
+## .psivec gives psi per sample
 
