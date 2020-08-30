@@ -52,6 +52,8 @@ awk '
     1 {print}
 ' *.ioe > ${N}.allevents.ioe
 N="${N}.allevents.ioe"
+
+mv $M ../
 mv $N ../
 
 awk '
@@ -59,6 +61,7 @@ awk '
     1 {print}
 ' *.gtf > ${N%%.allevents*}.allevents.gtf
 mv *.allevents.gtf ../
+
 cd ../
 
 ### PSI per transcript Isoform
@@ -75,4 +78,16 @@ python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $N -p ${grp2%%
 
 ## .dpsi gives the DeltaPSI as the difference of the mean PSI between conditions, and the p_value of this difference.
 ## .psivec gives psi per sample
+
+## differential trascript usage
+
+### compute psi of transcript isoforms
+python3.5 ~/bin/SUPPA-2.3/suppa.py psiPerIsoform -g $I -e ./iso_tpm_formatted.txt -o ./iso
+
+### Split PSI between 2 conditions:
+Rscript ~$HOME/scripts/RNA/split_file.R ./iso_isoform.psi $grp1 $grp2 ${grp1%%_rep*}_iso.psi ${grp2%%_rep*}_iso.psi
+
+### diffsplice
+python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $M -p  ${grp2%%_rep*}_iso.psi ${grp1%%_rep*}_iso.psi -e ${grp2%%_rep*}_iso.tpm ${grp1%%_rep*}_iso.tpm -o ${M%%.ioi}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice_iso
+
 
