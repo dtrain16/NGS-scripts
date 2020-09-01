@@ -8,7 +8,7 @@ set -u
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
 echo "USAGE: SUPPA_pipe_v1.sh <annotation> <file dir> <group1> <group2> <name>"
-echo "EXAMPLE: SUPPA_pipe_v1.sh $HOME/ref_seqs/AtRTD2_QUASI_19April2016.gtf $HOME/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
+echo "EXAMPLE: SUPPA_pipe_v1.sh $HOME/ref_seqs/AtRTD2/AtRTD2_QUASI_19April2016.gtf $HOME/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
 exit 1
 fi
 
@@ -35,7 +35,6 @@ cp $S/${i}/*/abundance.tsv kallisto_output/${i%%_kallisto*}/abundance.tsv; done
 python3.5 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i kallisto_output/*/abundance.tsv -k 1 -f 5 -o iso_tpm.txt
 
 ### generateEvents
-
 mkdir generateEvents
 cd generateEvents
 
@@ -64,7 +63,7 @@ mv *.allevents.gtf ../
 
 cd ../
 
-### PSI per transcript Isoform
+### PSI per event
 python3.5 ~/bin/SUPPA-2.3/suppa.py psiPerEvent -i $N -e iso_tpm.txt -o ${N%%.allevents*}_events
 
 ### Differential splicing with local events
@@ -74,20 +73,21 @@ Rscript $HOME/scripts/RNA/split_file.R ./iso_tpm.txt $grp1 $grp2 ${grp1%%_rep*}_
 Rscript $HOME/scripts/RNA/split_file.R ./${N%%.allevents*}_events.psi $grp1 $grp2 ${grp1%%_rep*}_events.psi ${grp2%%_rep*}_events.psi
 
 ## differential splicing analysis
-python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $N -p ${grp2%%_rep*}_events.psi ${grp1%%_rep*}_events.psi -e ${grp2%%_rep*}_iso.tpm ${grp1%%_rep*}_iso.tpm -o ${N%%.ioe}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice
-
-## .dpsi gives the DeltaPSI as the difference of the mean PSI between conditions, and the p_value of this difference.
-## .psivec gives psi per sample
+python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $N -p ${grp2%%_rep*}_events.psi ${grp1%%_rep*}_events.psi -e ${grp2%%_rep*}_iso.tpm ${grp1%%_rep*}_iso.tpm -o ${N%%.ioe}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice_events
 
 ## differential trascript usage
-
-### compute psi of transcript isoforms
-python3.5 ~/bin/SUPPA-2.3/suppa.py psiPerIsoform -g $I -e ./iso_tpm_formatted.txt -o ./iso
+### PSI per isoform
+python3.5 ~/bin/SUPPA-2.3/suppa.py psiPerIsoform -g $I -e iso_tpm.txt -o ${M%%.ioi}
 
 ### Split PSI between 2 conditions:
-Rscript ~$HOME/scripts/RNA/split_file.R ./iso_isoform.psi $grp1 $grp2 ${grp1%%_rep*}_iso.psi ${grp2%%_rep*}_iso.psi
+Rscript $HOME/scripts/RNA/split_file.R ./${M%%.ioi}_isoform.psi $grp1 $grp2 ${grp1%%_rep*}_iso.psi ${grp2%%_rep*}_iso.psi
 
 ### diffsplice
 python3.5 ~/bin/SUPPA-2.3/suppa.py diffSplice -m empirical -gc -i $M -p  ${grp2%%_rep*}_iso.psi ${grp1%%_rep*}_iso.psi -e ${grp2%%_rep*}_iso.tpm ${grp1%%_rep*}_iso.tpm -o ${M%%.ioi}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice_iso
+
+## collect output
+mkdir suppa2_output
+mv ${N%%.ioe}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice_events* -t suppa2_output
+mv ${M%%.ioi}_${grp2%%_rep*}-${grp1%%_rep*}_diffSplice_iso* -t suppa2_output
 
 
