@@ -16,7 +16,7 @@ suppressPackageStartupMessages(library(patchwork))
 
 # Input folder with trailing slash expected
 inputFile <- args[1]
-# inputFile <- "VazymeNAT/Raw_data/2020-07-17_Vazyme_Plate1_10ul_384well_QuantStudio12K/V0001CO200717.xlsx"
+# inputFile <- "VazymeNAT/Raw_data/2020-07-17 143127_rf/V0001CO200717.xlsx"
 
 ## output directory
 outdir <- args[2]
@@ -64,7 +64,8 @@ amp_data <- clean_names(amp_data) %>%
   rename(fluorescence=rn) %>%
   na.omit %>% 
   mutate(well_pos = keyfile$well_position[match(well, keyfile$well)]) %>%
-  mutate(sample_name = keyfile$sample_name[match(interaction(well, target_name), interaction(keyfile$well, keyfile$target_name))])
+  mutate(sample_name = keyfile$sample_name[match(interaction(well, target_name), interaction(keyfile$well, keyfile$target_name))]) %>%
+  mutate(sample_name = ifelse(test = sample_name == "", yes = well_pos, no = sample_name))
 
 ######################
 ## assemble reactions per amplicon as input to chipPCR
