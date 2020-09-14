@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-# StringTie2 pipeline: assemble transcripts using aligned reads (BAM output e.g. from Subjunc or Hisat2), merge assemblies into combined annotation, and quantify transcript abundance (TPM) across each sample in the dataset. 
+# StringTie2 v1: assemble transcripts using aligned reads (BAM output), merge assemblies, and quantify transcript abundance (-eB) for each sample. 
 # software required: samtools, stringtie, gffcompare.
 
 ## e.g. generate list of sample names 
