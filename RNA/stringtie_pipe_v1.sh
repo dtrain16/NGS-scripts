@@ -163,9 +163,18 @@ for i in $smpls;
         fi;
 done
 
+## coverage estimates
 mkdir abundance_estimates
 mv *tdata.ctab -t abundance_estimates/
 rm *ctab
+
+## export TPM
+
+for i in $new_smpls; do
+	do
+	Rscript $HOME/scripts/RNA/stringtie_extract_tpm.r "${i%%.sorted.bam}_stringtie_out.gtf"
+	mv *tpm -t abundance_estimates/
+done
 
 if [ ! -z "$ref" ]; then
 
