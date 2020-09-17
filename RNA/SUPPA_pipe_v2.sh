@@ -1,14 +1,12 @@
 #!/bin/bash
 set -u
 
-# Performs event-based splicing analysis using SUPPA2 based on kallisto output 
-# https://github.com/comprna/SUPPA#command-and-subcommand-structure
-# tutorial: https://github.com/comprna/SUPPA/wiki/SUPPA2-tutorial
+# Performs event-based splicing analysis using SUPPA2 using stringtie TPM output 
 
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
-echo "USAGE: SUPPA_pipe_v1.sh <annotation> <file dir> <group1> <group2> <name>"
-echo "EXAMPLE: SUPPA_pipe_v1.sh $HOME/ref_seqs/AtRTD2/AtRTD2_QUASI_19April2016.gtf $HOME/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
+echo "USAGE: SUPPA_pipe_v2.sh <annotation> <file dir> <group1> <group2> <name>"
+echo "EXAMPLE: SUPPA_pipe_v2.sh AtRTD2_QUASI_19April2016.gtf raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
 exit 1
 fi
 
@@ -17,7 +15,7 @@ fi
 I=$1
 ## events output name
 N=$5
-## kallisto quant files
+## extracted TPM (see stringtie_extract_tpm.r)
 S=$2
 # group 1 IDs
 grp1=$3
@@ -25,14 +23,15 @@ grp1=$3
 grp2=$4
 
 ## quantification
-mkdir kallisto_output
+mkdir tpm_output
 
 fls=$(dir $S)
-for i in $fls; do 
-mkdir kallisto_output/${i%%_kallisto*};
-cp $S/${i}/*/abundance.tsv kallisto_output/${i%%_kallisto*}/abundance.tsv; done
 
-python3.5 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i kallisto_output/*/abundance.tsv -k 1 -f 5 -o iso_tpm.txt
+for i in $fls; do 
+mkdir tpm_output/${i%%_stringtie.tpm*};
+cp $S/$i tpm_output/${i%%_stringtie.tpm*}/abundance.tpm; done
+
+python3.5 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i tpm_output/*/abundance.tpm -k 1 -f 3 -o iso_tpm.txt
 
 ### generateEvents
 mkdir generateEvents

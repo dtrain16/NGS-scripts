@@ -1,5 +1,6 @@
 ## extract TPM values for transcripts assembled by stringtie
 ## input is stringtie GTF output file
+options(echo = FALSE)
 library(tidyverse)
 args=commandArgs(trailingOnly=T)
 
@@ -15,6 +16,6 @@ a <- read.delim(i, header=F, skip=2) %>%
 	select(target_id, length, tpm)
 
 outfile <- sapply(strsplit(i, "_stringtie"), function(l) l[1])
-write.table(a, paste0(outfile,"_stringtie.tpm"), quote=F, col.names=T, row.names=F)
+write.table(a, paste0(outfile,"_stringtie.tpm"), sep='\t', quote=F, col.names=T, row.names=F)
 }
 
