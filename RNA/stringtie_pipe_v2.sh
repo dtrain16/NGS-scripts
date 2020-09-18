@@ -44,7 +44,7 @@ echo ""
 if [ "$type" == "un" ]; then	
 
 for i in $new_smpls; do	
-	echo $new_smpls $type
+	echo $i $type
 	stringtie $i -eB -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
 	done	
@@ -52,7 +52,7 @@ fi
 
 if [ "$type" == "fr" ]; then	
 
-for i in $new_smpls; do
+for i in $i; do
 	echo $new_smpls $type
         stringtie $i -eB --fr -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
@@ -61,7 +61,7 @@ fi
 
 if [ "$type" == "rf" ]; then	
 
-for i in $new_smpls; do
+for i in $i; do
 	echo $new_smpls $type	
         stringtie $i -eB --rf -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
