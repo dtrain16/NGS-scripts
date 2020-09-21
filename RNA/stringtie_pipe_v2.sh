@@ -45,8 +45,7 @@ if [ "$type" == "un" ]; then
 
 for i in $new_smpls; do	
 	echo $i $type
-	stringtie $i -eB -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
-	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
+	stringtie $i -e -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	done	
 fi	
 
@@ -54,8 +53,7 @@ if [ "$type" == "fr" ]; then
 
 for i in $i; do
 	echo $new_smpls $type
-        stringtie $i -eB --fr -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
-	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
+        stringtie $i -e --fr -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	done	
 fi	
 
@@ -63,14 +61,9 @@ if [ "$type" == "rf" ]; then
 
 for i in $i; do
 	echo $new_smpls $type	
-        stringtie $i -eB --rf -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
-	mv t_data.ctab ${i%%.sorted.bam}_tdata.ctab	
+        stringtie $i -e --rf -G $ref -o "${i%%.sorted.bam}_stringtie.gtf";	
 	done	
 fi	
-
-mkdir abundance_estimates_tpm
-mv *tdata.ctab -t abundance_estimates_tpm
-rm *ctab
 
 echo "cleaning ..."	
 
@@ -87,7 +80,8 @@ for i in $new_smpls; do
         Rscript $HOME/scripts/RNA/stringtie_extract_tpm.r "${i%%.sorted.bam}_stringtie.gtf"
 done
 
-mv *_stringtie.tpm abundance_estimates_tpm
+mkdir tpm_abundance
+mv *_stringtie.tpm tpm_abundance
 
 echo "Complete!"	
 ##############################
