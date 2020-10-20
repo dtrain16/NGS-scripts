@@ -104,7 +104,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	echo "bigWig ..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
-	rm $smp ${smp%%bam}bg -v
+	rm $smp -v
 
 fi
 
