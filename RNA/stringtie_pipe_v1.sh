@@ -109,15 +109,17 @@ for i in $new_smpls; do
         done
 fi
 
-## Merge assemblies
+## Merge assemblies with abundance filters
 echo ""
 echo "Merging assemblies"
 echo ""
 
 strng="*_stringtie.out"
+tpm_filter=$(ls -1 $strng | wc -l)
+tpm_filter=$(expr $tpm / 2)
 
 if [ ! -z "$ref" ]; then 
-	stringtie --merge -i $strng -G $ref -o "merged_stringtie_out.gtf"; 
+	stringtie --merge -i $strng -G $ref -f 0.05 -T $tpm_filter $ -o "merged_stringtie_out.gtf"; 
 	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf";
 fi
 
