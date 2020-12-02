@@ -115,11 +115,9 @@ echo "Merging assemblies"
 echo ""
 
 strng="*_stringtie.out"
-tpm_filter=$(ls -1 $strng | wc -l)
-tpm_filter=$(expr $tpm_filter / 2)
 
 if [ ! -z "$ref" ]; then 
-	stringtie --merge -i $strng -G $ref -f 0.05 -T $tpm_filter -o "merged_stringtie_out.gtf"; 
+	stringtie --merge -i $strng -G $ref -f 0.05 -T 1 -o "merged_stringtie_out.gtf"; 
 	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf";
 fi
 
