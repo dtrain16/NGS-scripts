@@ -50,7 +50,7 @@ echo "Unstranded library with no reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative $i -p 4 -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -61,7 +61,7 @@ echo "Unstranded library with annotation $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie $i -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+        stringtie --conservative $i -p 4 -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -72,7 +72,7 @@ echo "Forward stranded without reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --fr -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 $i --fr -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -83,7 +83,7 @@ echo "Forward stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -94,7 +94,7 @@ echo "Reverse stranded with reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie $i --rf -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 $i --rf -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -105,7 +105,7 @@ echo "Reverse stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+        stringtie --conservative -p 4 $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out";
         done
 fi
 
