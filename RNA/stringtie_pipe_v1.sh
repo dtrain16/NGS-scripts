@@ -50,7 +50,7 @@ echo "Unstranded library with no reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie --conservative $i -p 4 -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative $i -p 4 -g 10 -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -61,7 +61,7 @@ echo "Unstranded library with annotation $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie --conservative $i -p 4 -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+        stringtie --conservative $i -p 4 -g 10 -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -72,7 +72,7 @@ echo "Forward stranded without reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie --conservative -p 4 $i --fr -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 -g 10 $i --fr -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -83,7 +83,7 @@ echo "Forward stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-	stringtie --conservative -p 4 $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 -g 10 $i --fr -G $ref -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -94,7 +94,7 @@ echo "Reverse stranded with reference annotation"
 echo ""
 
 for i in $new_smpls; do
-	stringtie --conservative -p 4 $i --rf -o "${i%%.sorted.bam}_stringtie.out";
+	stringtie --conservative -p 4 -g 10 $i --rf -o "${i%%.sorted.bam}_stringtie.out";
 	done
 fi
 
@@ -105,7 +105,7 @@ echo "Reverse stranded with reference $ref"
 echo ""
 
 for i in $new_smpls; do
-        stringtie --conservative -p 4 $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out";
+        stringtie --conservative -p 4 -g 10 $i --rf -G $ref -o "${i%%.sorted.bam}_stringtie.out";
         done
 fi
 
@@ -117,8 +117,8 @@ echo ""
 strng="*_stringtie.out"
 
 if [ ! -z "$ref" ]; then 
-	stringtie --merge -i $strng -G $ref -f 0.05 -T 1 -o "merged_stringtie_out.gtf"; 
-	else stringtie --merge -i $strng -o "merged_stringtie_out.gtf";
+	stringtie --merge $strng -G $ref -f 0.05 -T 1 -o "merged_stringtie_out.gtf"; 
+	else stringtie --merge $strng -o "merged_stringtie_out.gtf";
 fi
 
 ## clean-up
