@@ -63,13 +63,6 @@ mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
 
-# adapter and quality trimming with trim_galore
-mkdir 2_read_trimming
-# trim_galore --fastqc --paired -q 20 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
-## with hard clipping if req'd
-# trim_galore --fastqc --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
 # adapter and quality trimming using scythe and sickle 
 mkdir 2_scythe_sickle
 cd 2_scythe_sickle
@@ -176,15 +169,7 @@ mv ${fq2%%.fastq*}_fastqc* 1_fastqc
 
 echo "Performing adapter and low-quality read trimming... "
 
-# adapter and quality trimming with trim_galore
-mkdir 2_read_trimming
-# trim_galore --fastqc --paired -q 20 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
-## with hard clipping if req'd
-# trim_galore --fastqc --paired -q 20 --clip_R1 10 --three_prime_clip_R1 1 ../$fq1 ../$fq2 | tee -a ../${fileID}_${dow}.log
-
 # adapter and quality trimming using scythe and sickle 
-
 mkdir 2_scythe_sickle
 cd 2_scythe_sickle
 
