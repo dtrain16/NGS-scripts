@@ -82,7 +82,7 @@ cd 3_subjunc
 echo "Beginning alignment ..."
 
 # subjunc aligner
-subjunc -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+subjunc -T 6 -i $index -r ${fq%%.fastq*}_trimmed.fq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 if [[ ${fq%%.fastq*}* != *.gz ]]; then gzip ${fq%%.fastq*}* ; fi
 
@@ -174,7 +174,7 @@ cd 3_subjunc/
 echo "Beginning alignment ..."
 
 # subjunc read alignment
-subjunc -T 4 -i $index -r ${fq1%%.fastq*}_val_1.fq* -R ${fq2%%.fastq*}_val_2.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_${dow}.log
+subjunc -T 6 -i $index -r ${fq1%%.fastq*}_val_1.fq* -R ${fq2%%.fastq*}_val_2.fq* -o "${fileID}.bam" 2>&1 | tee -a ../${fileID}_${dow}.log
 
 echo "cleaning..."
 
