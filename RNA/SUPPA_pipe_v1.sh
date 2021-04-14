@@ -32,7 +32,7 @@ for i in $fls; do
 mkdir kallisto_output/${i%%_kallisto*};
 cp $S/${i}/*/abundance.tsv kallisto_output/${i%%_kallisto*}/abundance.tsv; done
 
-python3.5 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i kallisto_output/*/abundance.tsv -k 1 -f 5 -o iso_tpm.txt
+python3 ~/bin/SUPPA-2.3/multipleFieldSelection.py -i kallisto_output/*/abundance.tsv -k 1 -f 5 -o iso_tpm.txt
 
 ### generateEvents
 mkdir generateEvents
