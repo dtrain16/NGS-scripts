@@ -63,6 +63,7 @@ mkdir 2_quant/
 mv 1_trimmed_fastq/*fq.gz 2_quant/
 cd 2_quant/
 
+## Kallisto quantification in unstranded, fr-stranded, and rf-stranded modes
 echo "                      "
 echo "kallisto"
 echo "                      "
@@ -77,10 +78,6 @@ elif [ $strand == "fr_stranded" ]; then
 else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
-
-mv *fq.gz ../1_trimmed_fastq/
-
-echo "complete"
 
 fi
 
@@ -132,6 +129,7 @@ mkdir 2_quant/
 mv 1_trimmed_fastq/*fq.gz 2_quant/
 cd 2_quant/
 
+### kallisto quantification in unstranded, fr-stranded or rf-stranded modes
 echo "                      "
 echo "kallisto"
 echo "                      "
@@ -147,9 +145,15 @@ else kallisto quant -i $annotation --rf-stranded -t 4 --bias -b 10 ${R1%%.fastq*
 
 fi
 
-mv *fq.gz ../1_trimmed_fastq/
-
-echo "complete"
-
 fi
 
+## archive trimmed fastq file
+mv *fq.gz ../1_trimmed_fastq/
+
+### extract quant files for local import
+cd ../../
+mkdir quant_files
+fls=*_kallisto_${dow}
+for i in $fls; do echo ; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant/$test; done
+
+echo "complete"
