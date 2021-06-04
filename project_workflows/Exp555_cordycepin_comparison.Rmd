@@ -23,9 +23,23 @@ library(lmerTest)
 quant <- "Kallisto_quant"
 anno_dir <- "~/ref_seqs/TAIR10/"
 
-##keyfile
+## keyfile and unify timepoints across conditions
 keyfile <- read_csv("exp_setup.csv") %>%
-  mutate(Sample = as.factor(Sample))
+	mutate(Sample = as.factor(Sample)) %>%
+	mutate(Condition = factor(Condition, levels = c("NL", "EL", "Rec"))) %>%
+	mutate(Timepoint = ifelse(Condition == "EL" & Timepoint == 60, 10,
+		ifelse(Condition == "EL" & Timepoint == 70, 20,
+		ifelse(Condition == "EL" & Timepoint == 80, 30,
+		ifelse(Condition == "EL" & Timepoint == 90, 40,
+		ifelse(Condition == "Rec" & Timepoint == 70, 20,
+                ifelse(Condition == "Rec" & Timepoint == 80, 30,
+                ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
+
+
+key <- NULL
+for(i in unique(keyfile$Condition)){
+	a <- subset(keyfile, Condition == "i")
+	
 
 ## arrange sample information
 metatable <- tibble(
@@ -33,12 +47,12 @@ metatable <- tibble(
   Sample = as.factor(sapply(strsplit(title, "_"), function(l) l[2]))
 ) %>% left_join(keyfile, by="Sample")
 
-fls <- file.path(quant, metatable$title, "abundance.h5")
+fls <- file.path(quant, metatable$title, "2_quant", "abundance.h5")
 names(fls) <- metatable$Sample
 all(file.exists(fls))
 
 ## transcript mapping info
-tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.50.gtf", delim='\t', col_names = F, skip = 5) %>%
+tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.50.gtf"), delim='\t', col_names = F, skip = 5) %>%
   filter(X3 == "transcript") %>%
   mutate(TXNAME = sapply(strsplit(X9, '"'), function(l) l[4])) %>%
   mutate(GENEID = sapply(strsplit(X9, '"'), function(l) l[2])) %>%
@@ -50,30 +64,28 @@ txi_gene <- tximport(files = fls,
                       type = "kallisto",
                       countsFromAbundance = "no")
 
-## TPM matrix and abundance filter
-gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 3, ] ## TPM > 1 in at least 3
+## TPM matrix of genes detected at TPM > 1 in at least 3 samples
+gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 3, ]
 
 ## transform data for modelling
-gene_tpm <- as.data.frame(tpm_NL) %>%
+input <- as.data.frame(gene_tpm) %>%
 	rownames_to_column('ID') %>%
 	gather(key=Sample, value=tpm, -ID) %>%
 	left_join(keyfile, by='Sample') %>%
 	mutate(log2_tpm = log2(tpm))
 
+
+
 ## build model
-mdl <- lmer(formula = log2_tpm ~ Treatment + Timepoint + (1 | Experiment), data = subset(tpm_NL, ID == "AT1G01010"))
+mdl <- lmer(formula = tpm ~ Treatment * Timepoint * Condition + (1 | Experiment), data = input)
 
 for(i in unique(gene_tpm$ID)){
-
 
 }
 
 ## generate gene-level TPM matrix
 fls_NL <- fls[names(fls) %in% subset(metatable, Condition == "NL")$title]
-txi_NL <- tximport(files = fls_NL, 
-                      tx2gene = tx2gene, 
-                      type = "kallisto", 
-                      countsFromAbundance = "no")
+txi_NL <- tximport(files = fls_NL, tx2gene = tx2gene, type = "kallisto", countsFromAbundance = "no")
 
 ##---> TPM matrix for downstream analyses
 tpm_NL <- txi_NL$abundance[rowSums(txi_NL$abundance > 1) > 3, ] ## TPM > 1 in at least 3
