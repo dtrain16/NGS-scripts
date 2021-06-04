@@ -35,12 +35,6 @@ keyfile <- read_csv("exp_setup.csv") %>%
                 ifelse(Condition == "Rec" & Timepoint == 80, 30,
                 ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
 
-
-key <- NULL
-for(i in unique(keyfile$Condition)){
-	a <- subset(keyfile, Condition == "i")
-	
-
 ## arrange sample information
 metatable <- tibble(
   title = dir(path = quant),
@@ -71,8 +65,7 @@ gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 3, ]
 input <- as.data.frame(gene_tpm) %>%
 	rownames_to_column('ID') %>%
 	gather(key=Sample, value=tpm, -ID) %>%
-	left_join(keyfile, by='Sample') %>%
-	mutate(log2_tpm = log2(tpm))
+	left_join(keyfile, by='Sample')
 
 
 
@@ -82,24 +75,6 @@ mdl <- lmer(formula = tpm ~ Treatment * Timepoint * Condition + (1 | Experiment)
 for(i in unique(gene_tpm$ID)){
 
 }
-
-## generate gene-level TPM matrix
-fls_NL <- fls[names(fls) %in% subset(metatable, Condition == "NL")$title]
-txi_NL <- tximport(files = fls_NL, tx2gene = tx2gene, type = "kallisto", countsFromAbundance = "no")
-
-##---> TPM matrix for downstream analyses
-tpm_NL <- txi_NL$abundance[rowSums(txi_NL$abundance > 1) > 3, ] ## TPM > 1 in at least 3
-colnames(tpm_NL) <- sapply(strsplit(colnames(tpm_NL), "_"), function(l) l[2])
-
-tpm_NL <- as.data.frame(tpm_NL) %>% 
-  rownames_to_column('ID') %>%
-  gather(key=Sample, value=tpm, -ID) %>%
-  left_join(keyfile, by='Sample')
-
-mdl <- lmer(formula = log2(tpm) ~ Treatment + Timepoint + (1 | Experiment), data = subset(tpm_NL, ID == "AT1G01010"))
-
-ggplot() +
-  geom_point(aes(x=Timepoint, y=log2(tpm), colour=Treatment), data = subset(tpm_NL, ID == "AT1G01010"))
 
 
 ```
