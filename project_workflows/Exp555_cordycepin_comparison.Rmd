@@ -14,18 +14,49 @@ Determine RNA half-lives measured, using cordycepin treatment paired with RNA-se
 knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
 options(stringsAsFactors = FALSE)
 
+## packages
 library(tidyverse)
 library(tximport)
 library(lme4)
 library(lmerTest)
+library(pheatmap)
 
-## file directories
+## geom_flat_violin function
+source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+
+# gg theme
+theme_niwot <- function(){
+  theme_bw() +
+    theme(
+      text = element_text(family = "serif"), 
+      axis.text = element_text(size = 12), 
+      axis.title = element_text(size = 12),
+      axis.line.x = element_line(color="black"),
+      axis.line.y = element_line(color="black"),
+          panel.border = element_blank(),
+          panel.grid.major.x = element_blank(),                                          
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major.y = element_blank(),  
+          plot.margin = unit(c(1, 1, 1, 1), units = , "cm"),
+          plot.title = element_text(size = 18, vjust = 1, hjust = 0),
+          legend.text = element_text(size = 10),          
+          legend.title = element_blank(),                              
+          legend.position = c(0.9, 0.9), 
+          legend.key = element_blank(),
+          legend.background = element_rect(color = "black", 
+                                           fill = "transparent", 
+                                           size = 2, linetype = "blank"))
+}
+
+## directories
 quant <- "Kallisto_quant"
 anno_dir <- "~/ref_seqs/TAIR10/"
 
 ## keyfile and unify timepoints across conditions
 keyfile <- read_csv("exp_setup.csv") %>%
 	mutate(Sample = as.factor(Sample)) %>%
+	mutate(Treatment = factor(Treatment, levels = c("Mock", "Cordycepin"))) %>%
 	mutate(Condition = factor(Condition, levels = c("NL", "EL", "Rec"))) %>%
 	mutate(Timepoint = ifelse(Condition == "EL" & Timepoint == 60, 10,
 		ifelse(Condition == "EL" & Timepoint == 70, 20,
@@ -34,6 +65,7 @@ keyfile <- read_csv("exp_setup.csv") %>%
 		ifelse(Condition == "Rec" & Timepoint == 70, 20,
                 ifelse(Condition == "Rec" & Timepoint == 80, 30,
                 ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
+#mutate(Condition = ifelse(Condition == "EL" & Timepoint == 10, "yintercept", Condition)
 
 ## arrange sample information
 metatable <- tibble(
@@ -58,8 +90,9 @@ txi_gene <- tximport(files = fls,
                       type = "kallisto",
                       countsFromAbundance = "no")
 
-## TPM matrix of genes detected at TPM > 1 in at least 3 samples
-gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 3, ]
+## TPM matrix of genes detected at TPM > 1 in at least 12 samples 
+## 3 timepoints x 2 conditions x 2 treatments = 12
+gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 12, ]
 
 ## transform data for modelling
 input <- as.data.frame(gene_tpm) %>%
@@ -67,17 +100,146 @@ input <- as.data.frame(gene_tpm) %>%
 	gather(key=Sample, value=tpm, -ID) %>%
 	left_join(keyfile, by='Sample')
 
+d1 <- subset(input, Condition == "NL")
+d2 <- subset(input, Condition == "EL" | Condition == "Rec")
 
+###############
+###### Exploratory heatmaps
+################
+
+## control conditions
+my_mat <- select(d1, ID, tpm, Treatment, Timepoint, Experiment) %>%
+	mutate(log_tpm = log2(tpm+0.01)) %>%
+	group_by(ID, Treatment, Timepoint) %>% 
+	summarise(avg_logtpm = mean(log_tpm)) %>%
+	spread(Timepoint, avg_logtpm) %>%
+	arrange(Treatment, ID)
+my_mat <- as.data.frame(my_mat)
+
+## heatmap annotation info
+my_grps <- select(my_mat, ID, Treatment)
+rownames(my_grps) <- paste0(my_grps$ID, '_', my_grps$Treatment)
+my_grps$ID <- NULL
+
+## numeric matrix
+rownames(my_mat) <- paste0(my_mat$ID, '_', my_mat$Treatment)
+my_mat <- my_mat[c(3:5)]
+my_mat <- as.matrix(my_mat)
+
+pheatmap(mat = my_mat, 
+	show_rownames = F, 
+	annotation_row = my_grps,
+	filename = "explore_heatmap_NL.pdf",
+	scale = "none",
+	cluster_cols = F,
+	cluster_rows = F,
+        angle_col = 90 
+)
+
+## HL vs Recovery
+my_mat <- select(d2, ID, tpm, Treatment, Timepoint, Condition, Experiment) %>%
+        mutate(log_tpm = log2(tpm+0.01)) %>%
+        group_by(ID, Treatment, Condition, Timepoint) %>%
+        summarise(avg_logtpm = mean(log_tpm)) %>%
+        spread(Timepoint, avg_logtpm) %>%
+        arrange(Condition, Treatment, ID)
+my_mat <- as.data.frame(my_mat)
+
+## heatmap annotation info
+my_grps <- select(my_mat, ID, Condition, Treatment)
+rownames(my_grps) <- paste(my_grps$ID, my_grps$Condition, my_grps$Treatment, sep='_')
+my_grps$ID <- NULL
+
+## numeric matrix
+rownames(my_mat) <- paste(my_mat$ID, my_mat$Condition, my_mat$Treatment, sep='_')
+my_mat <- my_mat[c(4:7)]
+my_mat <- as.matrix(my_mat)
+
+pheatmap(mat = my_mat,
+        show_rownames = F,
+        annotation_row = my_grps,
+        filename = "explore_heatmap_ELvsRec.pdf",
+        scale = "none",
+        cluster_cols = F,
+        cluster_rows = F,
+        angle_col = 90
+)
+
+###########################
+######### Exploratory smoothed fitting
+###########################
+
+### plot jitter and smoothed line for random 200 genes
+
+sample_ids <- sample(unique(input$ID), size = 200, replace = FALSE)
+
+pdf("explore_smoothjitter_NL.pdf")
+subset(d1, ID %in% sample_ids ) %>%
+	group_by(ID, Treatment, Timepoint) %>% 
+	summarise(avg_tpm = mean(tpm)) %>%
+	ggplot(aes(x = Timepoint, y = avg_tpm)) + 
+		geom_jitter(alpha=0.3) + 
+		facet_wrap(~Treatment) + 
+		geom_smooth(method = "auto") +
+		scale_y_continuous(name = "TPM") + 
+		scale_x_discrete(name = "Time (min)") + 
+		theme(legend.position = "none") +
+		theme_niwot()
+dev.off()
+
+pdf("explore_smoothjitter_ELvsRec.pdf")
+subset(d2, ID %in% sample_ids ) %>%
+        group_by(ID, Treatment, Condition, Timepoint) %>%
+        summarise(avg_tpm = mean(tpm)) %>%
+        ggplot(aes(x = Timepoint, y = avg_tpm, group=Condition, linetype=Condition)) +
+                geom_jitter(alpha=0.3) +
+                facet_wrap(~Treatment) +
+                geom_smooth(method = "auto") +
+                scale_y_continuous(name = "TPM") +
+                scale_x_discrete(name = "Time (min)") +
+                theme(legend.position = "none") +
+                theme_niwot()
+dev.off()
 
 ## build model
-mdl <- lmer(formula = tpm ~ Treatment * Timepoint * Condition + (1 | Experiment), data = input)
+# mdl <- lmer(formula = tpm ~ Treatment * Timepoint * Condition + (1 | Experiment), data = input)
 
-for(i in unique(gene_tpm$ID)){
 
+
+pdf("gompertz_control_trial.pdf")
+
+par(mfrow = c(3, 3))
+
+# plot and fit to 9 random genes
+for (i in sample(unique(d1$ID), size = 9, replace = FALSE)) {
+	a <- subset(d1, ID %in% i)
+	
+	a1 <- subset(a, Treatment == "Mock")
+	a2 <- subset(a, Treatment == "Cordycepin")
+
+	# ERROR HANDLING for initial fit
+	possibleError <- tryCatch(tmp <- getInitial(Y ~ SSgompertz(X, Asym, b2, 
+        	b3), data = a1), error = function(e) e)
+    
+	if (!inherits(possibleError, "error")) {
+		tmp <- getInitial(Y ~ SSgompertz(X, Asym, b2, b3), data = a1)
+    }
+    
+    # ERROR HANDLING for final fit
+    possibleError <- tryCatch(fit <- gnls(Y ~ SSgompertz(X, Asym, b2, b3), data = a1, 
+        start = tmp), error = function(e) e)
+    
+    if (!inherits(possibleError, "error")) {
+        # REAL WORK
+        fit <- gnls(Y ~ SSgompertz(X, Asym, b2, b3), data = a1, start = tmp)
+        yfitted <- predict(fit, list(X = xNew))
+        plot(Y ~ X, a, ylab = "Gompertz Mock", xlab = "Time (min)")
+        lines(xNew, yfitted, col = "salmon")
+        mtext(paste(id), font = 3, padj = -1)
+    }
 }
 
-
-```
+dev.off()
 
 
 
