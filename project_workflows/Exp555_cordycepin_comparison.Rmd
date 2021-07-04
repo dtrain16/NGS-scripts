@@ -17,9 +17,8 @@ options(stringsAsFactors = FALSE)
 ## packages
 library(tidyverse)
 library(tximport)
-library(lme4)
-library(lmerTest)
 library(pheatmap)
+library(nlme)
 
 ## geom_flat_violin function
 source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
@@ -65,7 +64,6 @@ keyfile <- read_csv("exp_setup.csv") %>%
 		ifelse(Condition == "Rec" & Timepoint == 70, 20,
                 ifelse(Condition == "Rec" & Timepoint == 80, 30,
                 ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
-#mutate(Condition = ifelse(Condition == "EL" & Timepoint == 10, "yintercept", Condition)
 
 ## arrange sample information
 metatable <- tibble(
@@ -90,16 +88,22 @@ txi_gene <- tximport(files = fls,
                       type = "kallisto",
                       countsFromAbundance = "no")
 
-## TPM matrix of genes detected at TPM > 1 in at least 12 samples 
-## 3 timepoints x 2 conditions x 2 treatments = 12
-gene_tpm <- txi_gene$abundance[rowSums(txi_gene$abundance > 1) > 12, ]
+## abundance filter: TPM > 1 in >= 9 (3 time-points, 3 conditions) mock-treated samples 
+mock_ids <- metatable$Sample[metatable$Treatment == "Mock"]
+gene_tpm <- as.data.frame(txi_gene$abundance)
+keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% mock_ids]>1)>8
+gene_tpm <- gene_tpm[keep,]
 
 ## transform data for modelling
-input <- as.data.frame(gene_tpm) %>%
-	rownames_to_column('ID') %>%
+input <- rownames_to_column(gene_tpm, 'ID') %>%
 	gather(key=Sample, value=tpm, -ID) %>%
 	left_join(keyfile, by='Sample')
 
+rel_scale <- subset(input, Timepoint == 10 | Condition == "Rec" & Timepoint == 20) %>%
+        group_by(ID, Treatment, Condition) %>%
+	summarise(avg_tpm = mean(tpm))
+
+## scale values relative to t0
 d1 <- subset(input, Condition == "NL")
 d2 <- subset(input, Condition == "EL" | Condition == "Rec")
 
@@ -201,12 +205,9 @@ subset(d2, ID %in% sample_ids ) %>%
                 theme_niwot()
 dev.off()
 
-## build model
-# mdl <- lmer(formula = tpm ~ Treatment * Timepoint * Condition + (1 | Experiment), data = input)
+### trial NL models
 
-
-
-pdf("gompertz_control_trial.pdf")
+pdf("gompertz_NL_trial.pdf")
 
 par(mfrow = c(3, 3))
 
@@ -218,8 +219,11 @@ for (i in sample(unique(d1$ID), size = 9, replace = FALSE)) {
 	a2 <- subset(a, Treatment == "Cordycepin")
 
 	# ERROR HANDLING for initial fit
-	possibleError <- tryCatch(tmp <- getInitial(Y ~ SSgompertz(X, Asym, b2, 
-        	b3), data = a1), error = function(e) e)
+possibleError <- tryCatch(tmp <- getInitial(Y ~ SSlogis(X, Asym, xmid, scal), 
+        data = a), error = function(e) e)	
+
+possibleError <- tryCatch(tmp <- getInitial(Y ~ SSgompertz(X, Asym, b2, b3), data = a1), 
+	error = function(e) e)
     
 	if (!inherits(possibleError, "error")) {
 		tmp <- getInitial(Y ~ SSgompertz(X, Asym, b2, b3), data = a1)
@@ -233,9 +237,11 @@ for (i in sample(unique(d1$ID), size = 9, replace = FALSE)) {
         # REAL WORK
         fit <- gnls(Y ~ SSgompertz(X, Asym, b2, b3), data = a1, start = tmp)
         yfitted <- predict(fit, list(X = xNew))
-        plot(Y ~ X, a, ylab = "Gompertz Mock", xlab = "Time (min)")
+
+	plot(Y ~ X, a, ylab = "Gompertz Mock", xlab = "Time (min)")
         lines(xNew, yfitted, col = "salmon")
-        mtext(paste(id), font = 3, padj = -1)
+        mtext(paste(i), font = 3, padj = -1)
+
     }
 }
 
