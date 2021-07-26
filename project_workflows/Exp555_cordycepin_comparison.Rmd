@@ -18,10 +18,11 @@ options(stringsAsFactors = FALSE)
 library(tidyverse)
 library(tximport)
 library(pheatmap)
+library(WGCNA)
+library(clusterSim)
+library(factoextra)
 library(nlme)
-
-## geom_flat_violin function
-source("https://gist.githubusercontent.com/benmarwick/2a1bb0133ff568cbe28d/raw/fb53bd97121f7f9ce947837ef1a4c65a73bffb3f/geom_flat_violin.R")
+library(patchwork)
 
 # gg theme
 theme_niwot <- function(){
@@ -32,7 +33,6 @@ theme_niwot <- function(){
       axis.title = element_text(size = 12),
       axis.line.x = element_line(color="black"),
       axis.line.y = element_line(color="black"),
-          panel.border = element_blank(),
           panel.grid.major.x = element_blank(),                                          
           panel.grid.minor.x = element_blank(),
           panel.grid.minor.y = element_blank(),
@@ -41,7 +41,7 @@ theme_niwot <- function(){
           plot.title = element_text(size = 18, vjust = 1, hjust = 0),
           legend.text = element_text(size = 10),          
           legend.title = element_blank(),                              
-          legend.position = c(0.9, 0.9), 
+          #legend.position = c(0.9, 0.9), 
           legend.key = element_blank(),
           legend.background = element_rect(color = "black", 
                                            fill = "transparent", 
@@ -80,7 +80,7 @@ tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.50.gtf"),
   filter(X3 == "transcript") %>%
   mutate(TXNAME = sapply(strsplit(X9, '"'), function(l) l[4])) %>%
   mutate(GENEID = sapply(strsplit(X9, '"'), function(l) l[2])) %>%
-  select(TXNAME,GENEID) %>%  unique
+  dplyr::select(TXNAME,GENEID) %>%  unique
 
 ## generate TPM matrix
 txi_gene <- tximport(files = fls,
@@ -88,121 +88,117 @@ txi_gene <- tximport(files = fls,
                       type = "kallisto",
                       countsFromAbundance = "no")
 
-## abundance filter: TPM > 1 in >= 9 (3 time-points, 3 conditions) mock-treated samples 
-mock_ids <- metatable$Sample[metatable$Treatment == "Mock"]
+## abundance filter: TPM > 1 in all t0 samples
+t0_ids <- subset(metatable, Timepoint == 10 | Condition == "Rec" & Timepoint == 20)$Sample
 gene_tpm <- as.data.frame(txi_gene$abundance)
-keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% mock_ids]>1)>8
+keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids]>1)>19
 gene_tpm <- gene_tpm[keep,]
 
+#### sample clustering
+my_grps <- dplyr::select(metatable, -title) %>% column_to_rownames("Sample") %>%
+	mutate(Experiment = as.factor(paste(Experiment))) %>%
+	mutate(Timepoint = as.factor(paste(Timepoint)))
+
+pheatmap(as.matrix(cor(gene_tpm)),
+        annotation_col = my_grps,
+        filename = "2D_sample_clustering.pdf",
+        scale = "none",
+        angle_col = 90,
+	show_rownames = F,
+	fontsize_col = 4,
+	fontsize = 6,
+	cutree_cols = 3,
+	cutree_rows = 3
+)
+
+## perform empirical-bayes adjustment
+eblm <- empiricalBayesLM(t(gene_tpm),
+	removedCovariates = metatable$Experiment,
+	retainedCovariates = metatable$Timepoint,
+	fitToSamples = metatable$Condition == "NL" & metatable$Treatment == "Mock")
+
+## re-scale adjusted values with unitization (zero minimum)
+dat.eblm <- clusterSim::data.Normalization(x = eblm$adjustedData, type = "n4", normalization="column")
+
+## perform PCA
+pcomp1 <- prcomp(t(gene_tpm), scale. = T)
+p1 <- fviz_eig(pcomp1)
+p2 <- fviz_pca_ind(pcomp1, repel = T, label="none", habillage=metatable$Experiment, addEllipses=TRUE, ellipse.type = "confidence")
+
+pcomp2 <- prcomp(dat.eblm, scale. = T)
+p3 <- fviz_eig(pcomp2)
+p4 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Experiment, addEllipses=TRUE, ellipse.type = "confidence")
+
+pdf("EB-correction.pdf")
+p1 + p2 + p3 + p4 + plot_annotation(title = 'Moderated EB correction (before and after)')
+dev.off()
+
+p5 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Timepoint, addEllipses=TRUE, ellipse.type = "confidence")
+p6 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Treatment, addEllipses=TRUE, ellipse.type = "confidence")
+p7 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Condition, addEllipses=TRUE, ellipse.type = "confidence")
+p8 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Experiment, addEllipses=TRUE, ellipse.type = "confidence")
+
+pdf("multi-PCA.pdf")
+p5 + p6 + p7 + p8
+dev.off()
+
 ## transform data for modelling
-input <- rownames_to_column(gene_tpm, 'ID') %>%
+input <-as.data.frame(t(dat.eblm)) %>%
+	rownames_to_column('ID') %>%
 	gather(key=Sample, value=tpm, -ID) %>%
 	left_join(keyfile, by='Sample')
 
 rel_scale <- subset(input, Timepoint == 10 | Condition == "Rec" & Timepoint == 20) %>%
         group_by(ID, Treatment, Condition) %>%
+	mutate(tpm = tpm) %>%
 	summarise(avg_tpm = mean(tpm))
 
 ## scale values relative to t0
-d1 <- subset(input, Condition == "NL")
-d2 <- subset(input, Condition == "EL" | Condition == "Rec")
+d1 <- subset(input, Condition == "NL") %>%
+	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
+	mutate(rel_abundance = tpm/rel_tpm)
 
-###############
-###### Exploratory heatmaps
-################
-
-## control conditions
-my_mat <- select(d1, ID, tpm, Treatment, Timepoint, Experiment) %>%
-	mutate(log_tpm = log2(tpm+0.01)) %>%
-	group_by(ID, Treatment, Timepoint) %>% 
-	summarise(avg_logtpm = mean(log_tpm)) %>%
-	spread(Timepoint, avg_logtpm) %>%
-	arrange(Treatment, ID)
-my_mat <- as.data.frame(my_mat)
-
-## heatmap annotation info
-my_grps <- select(my_mat, ID, Treatment)
-rownames(my_grps) <- paste0(my_grps$ID, '_', my_grps$Treatment)
-my_grps$ID <- NULL
-
-## numeric matrix
-rownames(my_mat) <- paste0(my_mat$ID, '_', my_mat$Treatment)
-my_mat <- my_mat[c(3:5)]
-my_mat <- as.matrix(my_mat)
-
-pheatmap(mat = my_mat, 
-	show_rownames = F, 
-	annotation_row = my_grps,
-	filename = "explore_heatmap_NL.pdf",
-	scale = "none",
-	cluster_cols = F,
-	cluster_rows = F,
-        angle_col = 90 
-)
-
-## HL vs Recovery
-my_mat <- select(d2, ID, tpm, Treatment, Timepoint, Condition, Experiment) %>%
-        mutate(log_tpm = log2(tpm+0.01)) %>%
-        group_by(ID, Treatment, Condition, Timepoint) %>%
-        summarise(avg_logtpm = mean(log_tpm)) %>%
-        spread(Timepoint, avg_logtpm) %>%
-        arrange(Condition, Treatment, ID)
-my_mat <- as.data.frame(my_mat)
-
-## heatmap annotation info
-my_grps <- select(my_mat, ID, Condition, Treatment)
-rownames(my_grps) <- paste(my_grps$ID, my_grps$Condition, my_grps$Treatment, sep='_')
-my_grps$ID <- NULL
-
-## numeric matrix
-rownames(my_mat) <- paste(my_mat$ID, my_mat$Condition, my_mat$Treatment, sep='_')
-my_mat <- my_mat[c(4:7)]
-my_mat <- as.matrix(my_mat)
-
-pheatmap(mat = my_mat,
-        show_rownames = F,
-        annotation_row = my_grps,
-        filename = "explore_heatmap_ELvsRec.pdf",
-        scale = "none",
-        cluster_cols = F,
-        cluster_rows = F,
-        angle_col = 90
-)
+d2 <- subset(input, Condition == "EL" | Condition == "Rec") %>%
+	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
+        mutate(rel_abundance = tpm/rel_tpm)
 
 ###########################
 ######### Exploratory smoothed fitting
 ###########################
 
-### plot jitter and smoothed line for random 200 genes
-
-sample_ids <- sample(unique(input$ID), size = 200, replace = FALSE)
+### look at trends for random genes
+sample_ids <- sample(unique(input$ID), size = 10, replace = FALSE)
 
 pdf("explore_smoothjitter_NL.pdf")
 subset(d1, ID %in% sample_ids ) %>%
 	group_by(ID, Treatment, Timepoint) %>% 
 	summarise(avg_tpm = mean(tpm)) %>%
-	ggplot(aes(x = Timepoint, y = avg_tpm)) + 
-		geom_jitter(alpha=0.3) + 
-		facet_wrap(~Treatment) + 
-		geom_smooth(method = "auto") +
-		scale_y_continuous(name = "TPM") + 
-		scale_x_discrete(name = "Time (min)") + 
-		theme(legend.position = "none") +
-		theme_niwot()
+	ggplot(aes(x = Timepoint, y = avg_tpm, colour = Treatment)) + 
+		geom_line() +
+		geom_point(data=subset(d1, ID %in% sample_ids ), 
+			aes(x=Timepoint, y=tpm, colour=Treatment), size=1, alpha=0.4) + 
+		facet_wrap(~ID) + 
+		coord_cartesian(ylim= c(0,1)) +
+		scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) + 
+		scale_x_continuous(name = "Time (min)", breaks=c(10,20,30)) + 
+		theme_niwot() +
+		theme(legend.position = "bottom")
 dev.off()
 
 pdf("explore_smoothjitter_ELvsRec.pdf")
 subset(d2, ID %in% sample_ids ) %>%
         group_by(ID, Treatment, Condition, Timepoint) %>%
         summarise(avg_tpm = mean(tpm)) %>%
-        ggplot(aes(x = Timepoint, y = avg_tpm, group=Condition, linetype=Condition)) +
-                geom_jitter(alpha=0.3) +
-                facet_wrap(~Treatment) +
-                geom_smooth(method = "auto") +
-                scale_y_continuous(name = "TPM") +
-                scale_x_discrete(name = "Time (min)") +
-                theme(legend.position = "none") +
-                theme_niwot()
+        ggplot(aes(x = Timepoint, y = avg_tpm, colour=Treatment, linetype=Condition)) +
+                geom_line() +
+		geom_point(data=subset(d2, ID %in% sample_ids ),
+                     aes(x=Timepoint, y=tpm, colour=Treatment, shape=Condition), size=1, alpha=0.4) +
+                facet_wrap(~ID) +
+		coord_cartesian(ylim= c(0,1)) +
+                scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) +
+                scale_x_discrete(name = "Time (min)", breaks=c(10,20,30,40)) +
+                theme_niwot() +
+		theme(legend.position = "bottom")
 dev.off()
 
 ### trial NL models
