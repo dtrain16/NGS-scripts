@@ -25,6 +25,7 @@ library(nlme)
 library(patchwork)
 
 # gg theme
+# source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
 theme_niwot <- function(){
   theme_bw() +
     theme(
