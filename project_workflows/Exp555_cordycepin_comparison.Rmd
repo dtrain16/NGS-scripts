@@ -1,7 +1,7 @@
 ---
 title: "Experiment 555 RNA half-lives under differing conditions"
-author: "Aaron, Diep"
-date: "21 May 2021"
+author: "Aaron B Smith, Diep R Ganguly"
+date: "9 Aug 2021"
 output: html_document
 ---
 
@@ -23,6 +23,14 @@ library(clusterSim)
 library(factoextra)
 library(nlme)
 library(patchwork)
+
+## install WGCNA and dependencies
+# install.packages(c("matrixStats", "Hmisc", "splines", "foreach", "doParallel", "fastcluster", "dynamicTreeCut", "survival"))
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+# 	install.packages("BiocManager")
+# 	BiocManager::install(version = "3.13")
+# BiocManager::install(c("GO.db", "preprocessCore", "impute")) 
+# install.packages('WGCNA')
 
 # gg theme
 # source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
@@ -50,8 +58,8 @@ theme_niwot <- function(){
 }
 
 ## directories
-quant <- "Kallisto_quant"
-anno_dir <- "~/ref_seqs/TAIR10/"
+quant <- "quant_files"
+anno_dir <- "/home/diepg/ref_seqs/TAIR10"
 
 ## keyfile and unify timepoints across conditions
 keyfile <- read_csv("exp_setup.csv") %>%
@@ -77,7 +85,7 @@ names(fls) <- metatable$Sample
 all(file.exists(fls))
 
 ## transcript mapping info
-tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.50.gtf"), delim='\t', col_names = F, skip = 5) %>%
+tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gtf"), delim='\t', col_names = F, skip = 5) %>%
   filter(X3 == "transcript") %>%
   mutate(TXNAME = sapply(strsplit(X9, '"'), function(l) l[4])) %>%
   mutate(GENEID = sapply(strsplit(X9, '"'), function(l) l[2])) %>%

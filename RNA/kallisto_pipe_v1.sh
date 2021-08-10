@@ -154,6 +154,6 @@ mv *fq.gz ../1_trimmed_fastq/
 cd ../../
 mkdir quant_files
 fls=*_kallisto_${dow}
-for i in $fls; do echo ; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant/$test; done
+for i in $fls; do echo $i; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant_files/$test; done
 
 echo "complete"
