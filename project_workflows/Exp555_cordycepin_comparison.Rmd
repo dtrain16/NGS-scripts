@@ -1,14 +1,13 @@
 ---
 title: "Experiment 555 RNA half-lives under differing conditions"
-author: "Aaron B Smith, Diep R Ganguly"
+author: "Diep R Ganguly & Aaron B Smith"
 date: "9 Aug 2021"
 output: html_document
 ---
 
-
 ### Aim
 
-Determine RNA half-lives measured, using cordycepin treatment paired with RNA-sequencing, in plants under no stress, light-stress, and recovery. 
+Determine RNA half-lives measured, using cordycepin treatment paired with RNA-sequencing, in plants under control ("normal light", NL), high-light (HL), and recovery (Rec) conditions. 
 
 ```{r}
 knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
@@ -18,11 +17,12 @@ options(stringsAsFactors = FALSE)
 library(tidyverse)
 library(tximport)
 library(pheatmap)
-library(WGCNA)
-library(clusterSim)
+library(RUVSeq)
+#library(WGCNA)
+#library(clusterSim)
 library(factoextra)
-library(nlme)
 library(patchwork)
+library(RColorBrewer)
 
 ## install WGCNA and dependencies
 # install.packages(c("matrixStats", "Hmisc", "splines", "foreach", "doParallel", "fastcluster", "dynamicTreeCut", "survival"))
@@ -76,11 +76,13 @@ keyfile <- read_csv("exp_setup.csv") %>%
 
 ## arrange sample information
 metatable <- tibble(
-  title = dir(path = quant),
-  Sample = as.factor(sapply(strsplit(title, "_"), function(l) l[2]))
-) %>% left_join(keyfile, by="Sample")
+  Sample = dir(path = quant),
+) %>% arrange(as.numeric(paste0(metatable$Sample))) %>% left_join(keyfile, by="Sample")
 
-fls <- file.path(quant, metatable$title, "2_quant", "abundance.h5")
+new_lvls <- arrange(metatable, as.numeric(paste0(metatable$Sample)))$Sample
+metatable$Sample <- factor(metatable$Sample, levels=new_lvls)
+
+fls <- file.path(quant, metatable$Sample, "abundance.h5")
 names(fls) <- metatable$Sample
 all(file.exists(fls))
 
@@ -95,22 +97,83 @@ tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gtf"),
 txi_gene <- tximport(files = fls,
                       tx2gene = tx2gene,
                       type = "kallisto",
-                      countsFromAbundance = "no")
+                      countsFromAbundance = "lengthScaledTPM")
 
 ## abundance filter: TPM > 1 in all t0 samples
-t0_ids <- subset(metatable, Timepoint == 10 | Condition == "Rec" & Timepoint == 20)$Sample
+t0_ids <- subset(metatable, Timepoint == 10)
 gene_tpm <- as.data.frame(txi_gene$abundance)
-keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids]>1)>19
-gene_tpm <- gene_tpm[keep,]
+keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids$Sample]>1)>11
+filtered <- round(txi_gene$counts[keep,], 0)
+
+## Upper-quartile normalization
+filtered_uq <- betweenLaneNormalization(filtered, which="upper")
+
+clrs <- brewer.pal(4, "Set2")
+
+pdf("Raw_counts_qc.pdf")
+plotRLE(filtered, outline=FALSE, main = "Raw counts", ylim=c(-4, 4), col=clrs[metatable$Experiment])
+
+pcomp1 <- prcomp(t(filtered), scale. = T)
+
+fviz_pca_ind(pcomp1, repel = T, label="none",
+        habillage=metatable$Experiment,
+        addEllipses=TRUE, ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp1, repel = T, label="none",
+        habillage=interaction(metatable$Treatment,metatable$Condition),
+        addEllipses=TRUE, ellipse.type = "confidence")
+dev.off()
+
+pdf("UQ_normalized_counts_qc.pdf")
+
+plotRLE(filtered_uq, outline=FALSE, main = "Upper-quartile correction", ylim=c(-4, 4), col=clrs[metatable$Experiment])
+
+pcomp2 <- prcomp(t(filtered_uq), scale. = T)
+
+fviz_pca_ind(pcomp2, repel = T, label="none", 
+	habillage=metatable$Experiment, 
+	addEllipses=TRUE, ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp2, repel = T, label="none", 
+	habillage=interaction(metatable$Treatment,metatable$Condition), 
+	addEllipses=TRUE, ellipse.type = "confidence")
+
+dev.off()
+
+## setup seq experiment object
+set <- newSeqExpressionSet(
+        counts=as.matrix(filtered),
+        normalizedCounts=as.matrix(filtered_uq),
+        phenoData = data.frame(metatable[2:5], row.names=metatable$Sample)
+)
+
+## Fit negative binomial GLM regression on UQ-normalized counts 
+design <- model.matrix(~0 + metatable$Treatment * metatable$Condition * metatable$Timepoint,
+	data=pData(set))
+y <- DGEList(counts = counts(set), group = metatable$Sample)
+y$samples <- left_join(y$samples, metatable, by=c("group"="Sample"))
+y <- calcNormFactors(y, method = 'upperquartile')
+y <- estimateGLMCommonDisp(y, design)
+y <- estimateGLMTagwiseDisp(y, design)
+
+## fit NB-GLM on covariates of interest
+fit <- glmFit(y, design)
+
+## compute residuals
+res <- residuals(fit, type="deviance")
+
+# RUVr normalization - use all detected genes to estimate the factors of unwanted variation
+genes <- rownames(filtered)
+set_ruvr <- RUVr(set, genes, k=1, res)
 
 #### sample clustering
-my_grps <- dplyr::select(metatable, -title) %>% column_to_rownames("Sample") %>%
+my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum) %>% column_to_rownames("Sample") %>%
 	mutate(Experiment = as.factor(paste(Experiment))) %>%
 	mutate(Timepoint = as.factor(paste(Timepoint)))
 
 pheatmap(as.matrix(cor(gene_tpm)),
         annotation_col = my_grps,
-        filename = "2D_sample_clustering.pdf",
+        filename = "2D_uncorrected_sample_clustering.pdf",
         scale = "none",
         angle_col = 90,
 	show_rownames = F,
@@ -121,13 +184,29 @@ pheatmap(as.matrix(cor(gene_tpm)),
 )
 
 ## perform empirical-bayes adjustment
-eblm <- empiricalBayesLM(t(gene_tpm),
+eblm <- empiricalBayesLM(
+	t(gene_tpm),
 	removedCovariates = metatable$Experiment,
-	retainedCovariates = metatable$Timepoint,
-	fitToSamples = metatable$Condition == "NL" & metatable$Treatment == "Mock")
+	retainedCovariates = cbind(metatable$Timepoint,metatable$Condition,metatable$Timepoint),
+	fitToSamples = )
+
+pheatmap(as.matrix(cor(t(eblm$adjustedData))),
+        annotation_col = my_grps,
+        filename = "2D_corrected_sample_clustering.pdf",
+        scale = "none",
+        angle_col = 90,
+        show_rownames = F,
+        fontsize_col = 4,
+        fontsize = 6,
+        cutree_cols = 3,
+        cutree_rows = 3
+)
+
 
 ## re-scale adjusted values with unitization (zero minimum)
-dat.eblm <- clusterSim::data.Normalization(x = eblm$adjustedData, type = "n4", normalization="column")
+dat.eblm <- clusterSim::data.Normalization(x = t(eblm$adjustedData), 
+	type = "n4", #unitization with zero minimum 
+	normalization="row")
 
 ## perform PCA
 pcomp1 <- prcomp(t(gene_tpm), scale. = T)
@@ -147,18 +226,30 @@ p6 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Treatmen
 p7 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Condition, addEllipses=TRUE, ellipse.type = "confidence")
 p8 <- fviz_pca_ind(pcomp2, repel = T, label="none", habillage=metatable$Experiment, addEllipses=TRUE, ellipse.type = "confidence")
 
-pdf("multi-PCA.pdf")
+pdf("multiPCA_corrected_v1.pdf")
 p5 + p6 + p7 + p8
 dev.off()
 
-## transform data for modelling
+p9 <- fviz_pca_ind(pcomp2, repel = T, label="none", 
+	habillage=interaction(metatable$Treatment,metatable$Condition,metatable$Timepoint), 
+	addEllipses=TRUE, ellipse.type = "confidence")
+
+pdf("multiPCA_corrected_v2.pdf")
+p8 + p9
+dev.off()
+
+# transform data for modelling
 input <-as.data.frame(t(dat.eblm)) %>%
 	rownames_to_column('ID') %>%
 	gather(key=Sample, value=tpm, -ID) %>%
-	left_join(keyfile, by='Sample')
+	left_join(keyfile, by='Sample') %>%
+	dplyr::select(-Title, -Fastq, -checksum)
 
-rel_scale <- subset(input, Timepoint == 10 | Condition == "Rec" & Timepoint == 20) %>%
-        group_by(ID, Treatment, Condition) %>%
+## seperate three time-courses by condition (i.e. NL, HL, or Rec)
+## Note, HL and Rec share the same 10 minute reference sample
+## scale expression values relative to t10
+rel_scale <- subset(input, Timepoint == 10) %>%
+        group_by(ID, Timepoint, Treatment, Condition) %>%
 	mutate(tpm = tpm) %>%
 	summarise(avg_tpm = mean(tpm))
 
