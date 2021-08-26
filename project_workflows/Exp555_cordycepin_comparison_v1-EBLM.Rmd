@@ -17,12 +17,10 @@ options(stringsAsFactors = FALSE)
 library(tidyverse)
 library(tximport)
 library(pheatmap)
-library(RUVSeq)
-#library(WGCNA)
+library(WGCNA)
 #library(clusterSim)
 library(factoextra)
 library(patchwork)
-library(RColorBrewer)
 
 ## install WGCNA and dependencies
 # install.packages(c("matrixStats", "Hmisc", "splines", "foreach", "doParallel", "fastcluster", "dynamicTreeCut", "survival"))
@@ -97,74 +95,13 @@ tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gtf"),
 txi_gene <- tximport(files = fls,
                       tx2gene = tx2gene,
                       type = "kallisto",
-                      countsFromAbundance = "lengthScaledTPM")
+                      countsFromAbundance = "no")
 
 ## abundance filter: TPM > 1 in all t0 samples
 t0_ids <- subset(metatable, Timepoint == 10)
 gene_tpm <- as.data.frame(txi_gene$abundance)
 keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids$Sample]>1)>11
-filtered <- round(txi_gene$counts[keep,], 0)
-
-## Upper-quartile normalization
-filtered_uq <- betweenLaneNormalization(filtered, which="upper")
-
-clrs <- brewer.pal(4, "Set2")
-
-pdf("Raw_counts_qc.pdf")
-plotRLE(filtered, outline=FALSE, main = "Raw counts", ylim=c(-4, 4), col=clrs[metatable$Experiment])
-
-pcomp1 <- prcomp(t(filtered), scale. = T)
-
-fviz_pca_ind(pcomp1, repel = T, label="none",
-        habillage=metatable$Experiment,
-        addEllipses=TRUE, ellipse.type = "confidence")
-
-fviz_pca_ind(pcomp1, repel = T, label="none",
-        habillage=interaction(metatable$Treatment,metatable$Condition),
-        addEllipses=TRUE, ellipse.type = "confidence")
-dev.off()
-
-pdf("UQ_normalized_counts_qc.pdf")
-
-plotRLE(filtered_uq, outline=FALSE, main = "Upper-quartile correction", ylim=c(-4, 4), col=clrs[metatable$Experiment])
-
-pcomp2 <- prcomp(t(filtered_uq), scale. = T)
-
-fviz_pca_ind(pcomp2, repel = T, label="none", 
-	habillage=metatable$Experiment, 
-	addEllipses=TRUE, ellipse.type = "confidence")
-
-fviz_pca_ind(pcomp2, repel = T, label="none", 
-	habillage=interaction(metatable$Treatment,metatable$Condition), 
-	addEllipses=TRUE, ellipse.type = "confidence")
-
-dev.off()
-
-## setup seq experiment object
-set <- newSeqExpressionSet(
-        counts=as.matrix(filtered),
-        normalizedCounts=as.matrix(filtered_uq),
-        phenoData = data.frame(metatable[2:5], row.names=metatable$Sample)
-)
-
-## Fit negative binomial GLM regression on UQ-normalized counts 
-design <- model.matrix(~0 + metatable$Treatment * metatable$Condition * metatable$Timepoint,
-	data=pData(set))
-y <- DGEList(counts = counts(set), group = metatable$Sample)
-y$samples <- left_join(y$samples, metatable, by=c("group"="Sample"))
-y <- calcNormFactors(y, method = 'upperquartile')
-y <- estimateGLMCommonDisp(y, design)
-y <- estimateGLMTagwiseDisp(y, design)
-
-## fit NB-GLM on covariates of interest
-fit <- glmFit(y, design)
-
-## compute residuals
-res <- residuals(fit, type="deviance")
-
-# RUVr normalization - use all detected genes to estimate the factors of unwanted variation
-genes <- rownames(filtered)
-set_ruvr <- RUVr(set, genes, k=1, res)
+gene_tpm <- gene_tpm[keep,]
 
 #### sample clustering
 my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum) %>% column_to_rownames("Sample") %>%

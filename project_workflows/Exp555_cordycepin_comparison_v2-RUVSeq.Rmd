@@ -1,0 +1,232 @@
+---
+title: "Experiment 555 RNA half-lives under differing conditions"
+author: "Diep R Ganguly & Aaron B Smith"
+date: "20 Aug 2021"
+output: html_document
+---
+
+### Aim
+
+Determine RNA half-lives measured, using cordycepin treatment paired with RNA-sequencing, in plants under control ("normal light", NL), high-light (HL), and recovery (Rec) conditions. 
+
+```{r}
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+options(stringsAsFactors = FALSE)
+
+## packages
+library(tidyverse)
+library(tximport)
+library(pheatmap)
+library(RUVSeq)
+library(factoextra)
+library(patchwork)
+library(RColorBrewer)
+
+# gg theme
+# source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
+theme_niwot <- function(){
+  theme_bw() +
+    theme(
+      text = element_text(family = "serif"), 
+      axis.text = element_text(size = 12), 
+      axis.title = element_text(size = 12),
+      axis.line.x = element_line(color="black"),
+      axis.line.y = element_line(color="black"),
+          panel.grid.major.x = element_blank(),                                          
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.major.y = element_blank(),  
+          plot.margin = unit(c(1, 1, 1, 1), units = , "cm"),
+          plot.title = element_text(size = 18, vjust = 1, hjust = 0),
+          legend.text = element_text(size = 10),          
+          legend.title = element_blank(),                              
+          #legend.position = c(0.9, 0.9), 
+          legend.key = element_blank(),
+          legend.background = element_rect(color = "black", 
+                                           fill = "transparent", 
+                                           size = 2, linetype = "blank"))
+}
+
+## directories
+quant <- "quant_files"
+anno_dir <- "/home/diepg/ref_seqs/TAIR10"
+
+## metadata and normalize timepoints from time of infiltration
+metatable <- read_csv("exp_setup.csv") %>%
+	mutate(Sample = as.factor(Sample)) %>%
+	mutate(Treatment = factor(Treatment, levels = c("Mock", "Cordycepin"))) %>%
+	mutate(Condition = factor(Condition, levels = c("NL", "EL", "Rec"))) %>%
+	mutate(Timepoint = ifelse(Condition == "EL" & Timepoint == 60, 10,
+		ifelse(Condition == "EL" & Timepoint == 70, 20,
+		ifelse(Condition == "EL" & Timepoint == 80, 30,
+		ifelse(Condition == "EL" & Timepoint == 90, 40,
+		ifelse(Condition == "Rec" & Timepoint == 70, 20,
+                ifelse(Condition == "Rec" & Timepoint == 80, 30,
+                ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
+
+new_lvls <- arrange(metatable, as.numeric(paste0(metatable$Sample)))$Sample
+metatable$Sample <- factor(metatable$Sample, levels=new_lvls)
+metatable$Timepoint <- factor(metatable$Timepoint, levels=(c(10,20,30,40)))
+
+fls <- file.path(quant, metatable$Sample, "abundance.h5")
+names(fls) <- metatable$Sample
+all(file.exists(fls))
+
+## transcript mapping info
+tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gtf"), delim='\t', col_names = F, skip = 5) %>%
+  filter(X3 == "transcript") %>%
+  mutate(TXNAME = sapply(strsplit(X9, '"'), function(l) l[4])) %>%
+  mutate(GENEID = sapply(strsplit(X9, '"'), function(l) l[2])) %>%
+  dplyr::select(TXNAME,GENEID) %>%  unique
+
+## generate TPM matrix
+txi_gene <- tximport(files = fls,
+                      tx2gene = tx2gene,
+                      type = "kallisto",
+                      countsFromAbundance = "lengthScaledTPM")
+
+## abundance filter: TPM > 1 in all t0 samples
+t0_ids <- subset(metatable, Timepoint == 10)
+gene_tpm <- as.data.frame(txi_gene$abundance)
+keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids$Sample]>1)>11
+
+clrs <- brewer.pal(6, "Set2")
+pdf("Initial_QC.pdf")
+plotRLE(as.matrix(gene_tpm[keep,]), outline=FALSE, main = "TPM", ylim=c(-4, 4), 
+	col=clrs[interaction(metatable$Experiment, metatable$Treatment)])
+
+pcomp1 <- prcomp(t(as.matrix(gene_tpm[keep,])), scale. = T)
+
+fviz_pca_ind(pcomp1, repel = T, label="none", title="length-scaled TPM counts",
+        habillage=interaction(metatable$Experiment, metatable$Treatment),
+        addEllipses=TRUE, ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp1, repel = T, label="none", title="length-scaled TPM counts",
+        habillage=interaction(metatable$Treatment,metatable$Condition),
+        addEllipses=TRUE, ellipse.type = "confidence")
+
+dev.off()
+
+## setup seq experiment object
+## input is counts with integer structure
+filtered <- round(txi_gene$counts[keep,], 0)
+
+set <- newSeqExpressionSet(
+        counts=as.matrix(filtered),
+        phenoData = data.frame(metatable[2:5], row.names=metatable$Sample)
+)
+
+## Fit negative binomial GLM regression 
+design <- model.matrix(~0 + Treatment * Condition * Timepoint, data=pData(set))
+
+y <- DGEList(counts = counts(set), group = metatable$Sample)
+y$samples <- left_join(y$samples, metatable, by=c("group"="Sample"))
+y <- estimateGLMCommonDisp(y, design)
+y <- estimateGLMTagwiseDisp(y, design)
+
+## fit NB-GLM on covariates of interest
+fit <- glmFit(y, design)
+
+## compute residuals
+res <- residuals(fit, type="deviance")
+
+## RUVr normalization - use all detected genes to estimate the factors of unwanted variation
+genes <- rownames(filtered)
+set_ruvr <- RUVr(set, genes, k=1, res)
+
+## RUVs normalization (all genes)
+x <- interaction(metatable$Treatment,metatable$Timepoint,metatable$Condition)
+differences <- makeGroups(x)
+set_ruvs <- RUVs(set, genes, k=1, differences)
+
+pdf("RUVr_vs_RUVs_QC.pdf")
+plotRLE(cpm(normCounts(set_ruvr)), outline=FALSE, main = "RUVr correction CPM", ylim=c(-4, 4), col=clrs[interaction(metatable$Experiment,metatable$Treatment)])
+
+plotRLE(cpm(normCounts(set_ruvs)), outline=FALSE, main = "RUVs correction CPM", ylim=c(-4, 4), col=clrs[interaction(metatable$Experiment,metatable$Treatment)])
+
+pcomp1 <- prcomp(t(normCounts(set_ruvr)), scale. = T)
+fviz_pca_ind(pcomp1, repel = T, label="none", title = "RUVr",
+        habillage=pData(set_ruvr)$Experiment,
+        addEllipses=TRUE, 
+	ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp1, repel = T, label="none", title = "RUVr",
+        habillage=interaction(pData(set_ruvr)$Treatment, pData(set_ruvr)$Condition),
+        addEllipses=TRUE, 
+	ellipse.type = "confidence")
+
+pcomp2 <- prcomp(t(normCounts(set_ruvs)), scale. = T)
+fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVs",
+        habillage=pData(set_ruvs)$Experiment,
+        addEllipses=TRUE, 
+	ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVs",
+        habillage=interaction(pData(set_ruvs)$Treatment, pData(set_ruvs)$Condition),
+        addEllipses=TRUE, 
+	ellipse.type = "confidence")
+dev.off()
+
+## Extract normalized CPM values
+input <- as.data.frame(cpm(normCounts(set_ruvr))) %>%
+	gather(Sample, counts) %>%
+	left_join(metatable, by="Sample") %>%
+	dplyr::select(-Title, -Fastq, -checksum) %>%
+	mutate(time = as.numeric(paste(Timepoint)))
+
+## Normalize counts relative to T10 for each time-course (i.e. NL, or HL/Rec)
+## Note, HL and Rec share the same 10 minute reference sample
+rel_scale <- subset(input, Timepoint == 10) %>%
+        group_by(ID, Timepoint, Treatment, Condition) %>%
+	mutate(tpm = tpm) %>%
+	summarise(avg_tpm = mean(tpm))
+
+## scale values relative to t0
+d1 <- subset(input, Condition == "NL") %>%
+	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
+	mutate(rel_abundance = tpm/rel_tpm)
+
+d2 <- subset(input, Condition == "EL" | Condition == "Rec") %>%
+	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
+        mutate(rel_abundance = tpm/rel_tpm)
+
+###########################
+######### Exploratory smoothed fitting
+###########################
+
+### look at trends for random genes
+sample_ids <- sample(unique(input$ID), size = 10, replace = FALSE)
+
+pdf("explore_smoothjitter_NL.pdf")
+subset(d1, ID %in% sample_ids ) %>%
+	group_by(ID, Treatment, Timepoint) %>% 
+	summarise(avg_tpm = mean(tpm)) %>%
+	ggplot(aes(x = Timepoint, y = avg_tpm, colour = Treatment)) + 
+		geom_line() +
+		geom_point(data=subset(d1, ID %in% sample_ids ), 
+			aes(x=Timepoint, y=tpm, colour=Treatment), size=1, alpha=0.4) + 
+		facet_wrap(~ID) + 
+		coord_cartesian(ylim= c(0,1)) +
+		scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) + 
+		scale_x_continuous(name = "Time (min)", breaks=c(10,20,30)) + 
+		theme_niwot() +
+		theme(legend.position = "bottom")
+dev.off()
+
+pdf("explore_smoothjitter_ELvsRec.pdf")
+subset(d2, ID %in% sample_ids ) %>%
+        group_by(ID, Treatment, Condition, Timepoint) %>%
+        summarise(avg_tpm = mean(tpm)) %>%
+        ggplot(aes(x = Timepoint, y = avg_tpm, colour=Treatment, linetype=Condition)) +
+                geom_line() +
+		geom_point(data=subset(d2, ID %in% sample_ids ),
+                     aes(x=Timepoint, y=tpm, colour=Treatment, shape=Condition), size=1, alpha=0.4) +
+                facet_wrap(~ID) +
+		coord_cartesian(ylim= c(0,1)) +
+                scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) +
+                scale_x_discrete(name = "Time (min)", breaks=c(10,20,30,40)) +
+                theme_niwot() +
+		theme(legend.position = "bottom")
+dev.off()
+
+
