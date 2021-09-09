@@ -21,6 +21,8 @@ library(RUVSeq)
 library(factoextra)
 library(patchwork)
 library(RColorBrewer)
+library(lme4)
+library(piecewiseSEM)
 
 # gg theme
 # source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
@@ -66,7 +68,6 @@ metatable <- read_csv("exp_setup.csv") %>%
 
 new_lvls <- arrange(metatable, as.numeric(paste0(metatable$Sample)))$Sample
 metatable$Sample <- factor(metatable$Sample, levels=new_lvls)
-#metatable$Timepoint <- factor(metatable$Timepoint, levels=(c(10,20,30,40)))
 
 fls <- file.path(quant, metatable$Sample, "abundance.h5")
 names(fls) <- metatable$Sample
@@ -264,9 +265,6 @@ subset(normData, ID %in% sample_ids ) %>%
 		theme(legend.position = "bottom")
 dev.off()
 
-library(lme4)
-library(piecewiseSEM)
-
 ## setup df for model-based predictions
 n.preds=42
 r <- range(normData$Timepoint)
@@ -274,27 +272,38 @@ exp_r <- unique(normData$Experiment)
 newdf <- data.frame(Timepoint=seq(r[1],r[2],length.out = n.preds)) %>%
 	mutate(Experiment = rep(exp_r, n.preds/length(unique(normData$Experiment) )))
 
+
 out <- NULL
 for( i in unique(normData$ID)){
 
 tmp <- subset(normData, ID == i)
 
-tmp1 <- subset(tmp, Condition == "NL")
-tmp2 <- subset(tmp, Condition == "EL")
-tmp3 <- subset(tmp, Condition == "Rec")
-
-possibleError <- tryCatch(mdl1 <- lmer(log_e ~ Timepoint + (1| Experiment), data=tmp1), 
-	error = function(e) e)
-
-if ( !inherits(possibleError, "error")) {
-	mdl1 <- lmer(log_e ~ Timepoint + (1|Experiment), data=tmp1)
-
-	rsq <- rsquared(mdl1)$Conditional
-	k <- -coefficients(mdl1)$Experiment$Timepoint[1]	
-	bic <- BIC(mdl1)
-	a1 <- data.frame(geneID=paste(i), bic, rsq, k, Condition=tmp1$Condition[1])	
-
+	for( c in unique(tmp$Condition)){
 	
+	tmp1 <- subset(tmp, Condition == c)
+	possibleError <- tryCatch(fit <- lmer(log_e ~ Timepoint + (1| Experiment), data=tmp1), 
+		error = function(e) e)
+
+	tmp_out <- NULL
+	if ( !inherits(possibleError, "error")) {
+		fit <- lmer(log_e ~ Timepoint + (1|Experiment), data=tmp1)
+
+		rsq <- rsquared(fit)$Conditional
+		k <- -coefficients(fit)$Experiment$Timepoint[1]	
+		bic <- BIC(fit)
+		half_life <- log(2)/k
+		a1 <- data.frame(geneID=i, bic, rsq, k, half_life, Condition=c)	
+		tmp_out <- rbind(tmp_out, a1)
+	}	
+}
+
+out <- rbind(out, tmp_out)
+
+}
+
+
+## produce sample plots
+
 	pred1 <- predict(mdl1, newdf, re.form=NA)
 
 	ggplot()+
@@ -304,25 +313,7 @@ if ( !inherits(possibleError, "error")) {
 
 }
 
-	mdl2 <- lmer(log_e ~ Timepoint + (1| Experiment), data=subset(tmp, Condition == "EL"))
-	
-	rsq <- rsquared(mdl2)$Conditional
-	k <- -coefficients(mdl2)$Experiment$Timepoint[1]
-	bic <- BIC(mdl2)
-	a2 <- data.frame(geneID=paste(i), bic, rsq, k, Condition="High-light")	
 
-	mdl3 <- lmer(log_e ~ Timepoint + (1| Experiment), data=subset(tmp, Condition == "Rec"))
 
-	rsq <- rsquared(mdl3)$Conditional
-	k <- -coefficients(mdl3)$Experiment$Timepoint[1]
-	bic <- BIC(mdl3)
-	a3 <- data.frame(geneID=paste(i), bic, rsq, k, Condition="Recovery")
-
-tmp <- rbind(a1,a2,a3)
-tmp$half_life <- log(2)/tmp$k
-
-out <- rbind(out, tmp)
-
-}
 
 
