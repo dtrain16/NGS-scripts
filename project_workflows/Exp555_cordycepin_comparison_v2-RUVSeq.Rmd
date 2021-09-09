@@ -66,7 +66,7 @@ metatable <- read_csv("exp_setup.csv") %>%
 
 new_lvls <- arrange(metatable, as.numeric(paste0(metatable$Sample)))$Sample
 metatable$Sample <- factor(metatable$Sample, levels=new_lvls)
-metatable$Timepoint <- factor(metatable$Timepoint, levels=(c(10,20,30,40)))
+#metatable$Timepoint <- factor(metatable$Timepoint, levels=(c(10,20,30,40)))
 
 fls <- file.path(quant, metatable$Sample, "abundance.h5")
 names(fls) <- metatable$Sample
@@ -79,45 +79,35 @@ tx2gene <- read_delim(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gtf"),
   mutate(GENEID = sapply(strsplit(X9, '"'), function(l) l[2])) %>%
   dplyr::select(TXNAME,GENEID) %>%  unique
 
+##########################
+###### Data import and abundance filter
+##########################
+
 ## generate TPM matrix
 txi_gene <- tximport(files = fls,
                       tx2gene = tx2gene,
                       type = "kallisto",
                       countsFromAbundance = "lengthScaledTPM")
 
-## abundance filter: TPM > 1 in all t0 samples
-t0_ids <- subset(metatable, Timepoint == 10)
+## abundance filter: TPM > 1 in all t10 values
+t0_ids <- subset(metatable, Timepoint == 10)$Sample
 gene_tpm <- as.data.frame(txi_gene$abundance)
-keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids$Sample]>1)>11
+keep <- rowSums(gene_tpm[colnames(gene_tpm) %in% t0_ids]>1)>11
 
-clrs <- brewer.pal(6, "Set2")
-pdf("Initial_QC.pdf")
-plotRLE(as.matrix(gene_tpm[keep,]), outline=FALSE, main = "TPM", ylim=c(-4, 4), 
-	col=clrs[interaction(metatable$Experiment, metatable$Treatment)])
-
-pcomp1 <- prcomp(t(as.matrix(gene_tpm[keep,])), scale. = T)
-
-fviz_pca_ind(pcomp1, repel = T, label="none", title="length-scaled TPM counts",
-        habillage=interaction(metatable$Experiment, metatable$Treatment),
-        addEllipses=TRUE, ellipse.type = "confidence")
-
-fviz_pca_ind(pcomp1, repel = T, label="none", title="length-scaled TPM counts",
-        habillage=interaction(metatable$Treatment,metatable$Condition),
-        addEllipses=TRUE, ellipse.type = "confidence")
-
-dev.off()
-
-## setup seq experiment object
-## input is counts with integer structure
+## counts with integer structure
 filtered <- round(txi_gene$counts[keep,], 0)
 
-set <- newSeqExpressionSet(
-        counts=as.matrix(filtered),
-        phenoData = data.frame(metatable[2:5], row.names=metatable$Sample)
+#################
+#### RUV - remove unwanted variance (batch) (Risso et al 2014)
+#################
+
+## setup seq experiment object
+set <- newSeqExpressionSet(counts=as.matrix(filtered),
+	phenoData = data.frame(metatable[2:5], row.names=metatable$Sample)
 )
 
 ## Fit negative binomial GLM regression 
-design <- model.matrix(~0 + Treatment * Condition * Timepoint, data=pData(set))
+design <- model.matrix(~Treatment * Condition * Timepoint, data=pData(set))
 
 y <- DGEList(counts = counts(set), group = metatable$Sample)
 y$samples <- left_join(y$samples, metatable, by=c("group"="Sample"))
@@ -130,103 +120,209 @@ fit <- glmFit(y, design)
 ## compute residuals
 res <- residuals(fit, type="deviance")
 
-## RUVr normalization - use all detected genes to estimate the factors of unwanted variation
+## RUVr normalization
 genes <- rownames(filtered)
-set_ruvr <- RUVr(set, genes, k=1, res)
+set1 <- RUVr(set, genes, k=1, res)
 
-## RUVs normalization (all genes)
+## RUVs normalization
 x <- interaction(metatable$Treatment,metatable$Timepoint,metatable$Condition)
 differences <- makeGroups(x)
-set_ruvs <- RUVs(set, genes, k=1, differences)
+set2 <- RUVs(set, genes, k=1, differences)
 
-pdf("RUVr_vs_RUVs_QC.pdf")
-plotRLE(cpm(normCounts(set_ruvr)), outline=FALSE, main = "RUVr correction CPM", ylim=c(-4, 4), col=clrs[interaction(metatable$Experiment,metatable$Treatment)])
+## colours
+clrs <- brewer.pal(6, "Set2")
 
-plotRLE(cpm(normCounts(set_ruvs)), outline=FALSE, main = "RUVs correction CPM", ylim=c(-4, 4), col=clrs[interaction(metatable$Experiment,metatable$Treatment)])
-
-pcomp1 <- prcomp(t(normCounts(set_ruvr)), scale. = T)
-fviz_pca_ind(pcomp1, repel = T, label="none", title = "RUVr",
-        habillage=pData(set_ruvr)$Experiment,
-        addEllipses=TRUE, 
-	ellipse.type = "confidence")
-
-fviz_pca_ind(pcomp1, repel = T, label="none", title = "RUVr",
-        habillage=interaction(pData(set_ruvr)$Treatment, pData(set_ruvr)$Condition),
-        addEllipses=TRUE, 
-	ellipse.type = "confidence")
-
-pcomp2 <- prcomp(t(normCounts(set_ruvs)), scale. = T)
-fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVs",
-        habillage=pData(set_ruvs)$Experiment,
-        addEllipses=TRUE, 
-	ellipse.type = "confidence")
-
-fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVs",
-        habillage=interaction(pData(set_ruvs)$Treatment, pData(set_ruvs)$Condition),
-        addEllipses=TRUE, 
-	ellipse.type = "confidence")
+pdf("RLEplots.pdf")
+plotRLE(as.matrix(gene_tpm[keep,]), outline=FALSE, main = "TPM", 
+	ylim=c(-4, 4), col=clrs[metatable$Treatment])
+plotRLE(cpm(normCounts(set1)), outline=FALSE, main = "RUVr(set, genes, k=1, res)", 
+	ylim=c(-4, 4), col=clrs[metatable$Treatment])
+plotRLE(cpm(normCounts(set2)), outline=FALSE, main = "RUVs(set, genes, k=1, differences)", 
+	ylim=c(-4, 4), col=clrs[metatable$Treatment])
 dev.off()
 
-## Extract normalized CPM values
-input <- as.data.frame(cpm(normCounts(set_ruvr))) %>%
-	gather(Sample, counts) %>%
+pdf("PCAplots.pdf")
+pcomp1 <- prcomp(t(as.matrix(gene_tpm[keep,])), scale. = T)
+pcomp2 <- prcomp(t(cpm(normCounts(set1))), scale. = T)
+
+fviz_pca_ind(pcomp1, repel = T, label="none", title="TPM",
+        habillage=metatable$Experiment, 
+	xlim=c(-200,200), ylim=c(-200,200),
+        addEllipses=TRUE, ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVr",
+        habillage=pData(set1)$Experiment, addEllipses=TRUE,
+	xlim=c(-200,200), ylim=c(-200,200),
+        ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp1, repel = T, label="none", title="TPM",
+        habillage=interaction(metatable$Treatment,metatable$Condition),
+	xlim=c(-200,200), ylim=c(-200,200),
+        addEllipses=TRUE, ellipse.type = "confidence")
+
+fviz_pca_ind(pcomp2, repel = T, label="none", title = "RUVr",
+        habillage=interaction(pData(set1)$Treatment, pData(set1)$Condition),
+	xlim=c(-200,200), ylim=c(-200,200),
+        addEllipses=TRUE, ellipse.type = "confidence")
+dev.off()
+
+## Extract corrected CPM values
+input_p1 <- as.data.frame(cpm(normCounts(set1))) %>%
+	rownames_to_column('ID') %>%
+	gather(Sample, cpm, -ID) %>%
 	left_join(metatable, by="Sample") %>%
-	dplyr::select(-Title, -Fastq, -checksum) %>%
-	mutate(time = as.numeric(paste(Timepoint)))
+	dplyr::select(-Title, -Fastq, -checksum, -Sample)
 
-## Normalize counts relative to T10 for each time-course (i.e. NL, or HL/Rec)
+input_p2 <- subset(input_p1, Timepoint == 10 & Condition == "EL") %>%
+	mutate(Condition = gsub(pattern="EL", replacement="Rec", x=Condition))
+
+input <- rbind(input_p1, input_p2)
+
+#####################
+### Normalization - T0 and decay factor
+####################
+
+## Convert CPM to fractional decreases from T10 for each condition
 ## Note, HL and Rec share the same 10 minute reference sample
-rel_scale <- subset(input, Timepoint == 10) %>%
+t10 <- subset(input, Timepoint == 10) %>%
         group_by(ID, Timepoint, Treatment, Condition) %>%
-	mutate(tpm = tpm) %>%
-	summarise(avg_tpm = mean(tpm))
+	mutate(cpm = as.numeric(paste0(cpm))) %>%
+	summarise(mean_cpm = mean(cpm))
 
-## scale values relative to t0
-d1 <- subset(input, Condition == "NL") %>%
-	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
-	mutate(rel_abundance = tpm/rel_tpm)
+## scale values relative to t10 and apply decay factor normalization to cordycepin-treated samples
+d1 <- subset(input, Treatment == "Cordycepin") %>%
+        mutate(t10_cpm = t10$mean_cpm[match(interaction(ID, Treatment, Condition),
+                interaction(t10$ID, t10$Treatment, t10$Condition))]) %>%
+        mutate(frac_cpm = cpm/t10_cpm) %>%
+        select(-cpm, -t10_cpm, -Treatment)
 
-d2 <- subset(input, Condition == "EL" | Condition == "Rec") %>%
-	mutate(rel_tpm = rel_scale$avg_tpm[match(interaction(ID, Treatment, Condition), interaction(rel_scale$ID, rel_scale$Treatment, rel_scale$Condition))]) %>%
-        mutate(rel_abundance = tpm/rel_tpm)
+## make list of stable genes based on expression (cpm) and variance (cov)
+x <- as.data.frame(cpm(normCounts(set1))) %>%
+        mutate(std = apply(X = ., MARGIN = 1, FUN = sd)) %>%
+        mutate(avg = rowMeans(., na.rm = T)) %>%
+        mutate(cov = std/avg)
+
+cv <- kmeans(x$cov, centers=10, iter.max= 100, algorithm="Lloyd")
+cv2 <- kmeans(log2(x$avg+0.01), centers=10, iter.max= 100, algorithm="Lloyd")
+
+## 20th percentile COV
+genes1 <- names(subset(cv$cluster, as.data.frame(cv$cluster)[,1] == order(cv$centers)[2]))
+## 90th percentile abundance
+genes2 <- names(subset(cv2$cluster, as.data.frame(cv2$cluster)[,1] == order(cv2$centers)[10]))
+## reference genes
+refgenes <- Reduce(intersect, list(genes1,genes2))
+
+pdf("refgenes.pdf")
+ggplot(data=subset(x, !(rownames(x) %in% refgenes))) + aes(y=cov, x=log2(avg+0.01)) +
+        geom_jitter(size=0.5, alpha=0.3) +
+	geom_jitter(data=subset(x, rownames(x) %in% refgenes), colour='salmon') +
+        theme_niwot() +
+        scale_y_continuous(name = "Coefficient of variation") +
+        scale_x_continuous(name = "log2 [TPM+0.01]")
+dev.off()
+
+## calclate decay factor for cordycepin-treated samples at each timepoint and condition
+normFactors_mean <- subset(d1, ID %in% refgenes) %>% 
+	group_by(Timepoint, Condition) %>%
+	summarise(decay_fac = mean(frac_cpm))
+
+## apply decay normalization and filter any genes with a fold-increase after T10
+d2 <- mutate(d1, decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition), 
+	interaction(normFactors_mean$Timepoint, normFactors_mean$Condition))]) %>%
+	mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
+	mutate(test = ifelse(decaynorm_frac_cpm > 1.5 & Timepoint != 10, yes = 1, no = 0))
+
+gene_filter <- subset(d2, test == 1) %>% select(ID) %>% unique
+
+normData <- select(d2, -frac_cpm, -test, -decay_fac) %>%
+	subset(!(ID %in% gene_filter$ID)) %>%
+	mutate(log_e = log(decaynorm_frac_cpm + 0.01))
 
 ###########################
-######### Exploratory smoothed fitting
+######### Data exploration 
 ###########################
 
 ### look at trends for random genes
-sample_ids <- sample(unique(input$ID), size = 10, replace = FALSE)
+sample_ids <- sample(unique(normData$ID), size = 16, replace = FALSE)
 
-pdf("explore_smoothjitter_NL.pdf")
-subset(d1, ID %in% sample_ids ) %>%
-	group_by(ID, Treatment, Timepoint) %>% 
-	summarise(avg_tpm = mean(tpm)) %>%
-	ggplot(aes(x = Timepoint, y = avg_tpm, colour = Treatment)) + 
-		geom_line() +
-		geom_point(data=subset(d1, ID %in% sample_ids ), 
-			aes(x=Timepoint, y=tpm, colour=Treatment), size=1, alpha=0.4) + 
+pdf("data_explore.pdf")
+subset(normData, ID %in% sample_ids ) %>%
+	group_by(ID, Timepoint, Condition) %>%
+	summarise(relative_abundance = mean(decaynorm_frac_cpm), 
+		reps = sum(!(is.na(decaynorm_frac_cpm))),
+		SE = sd(decaynorm_frac_cpm)/sqrt(reps)) %>%
+	ggplot(aes(x = Timepoint, y = relative_abundance, col = Condition)) + 
+		geom_line(linetype='dashed', size=0.5, alpha=0.6)+
+		geom_point(size=0.8) + 
+		geom_errorbar(aes(ymin=relative_abundance-SE, ymax=relative_abundance+SE), width=.8) +
 		facet_wrap(~ID) + 
-		coord_cartesian(ylim= c(0,1)) +
+		coord_cartesian(ylim= c(0,1.25)) +
 		scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) + 
-		scale_x_continuous(name = "Time (min)", breaks=c(10,20,30)) + 
+		scale_x_continuous(name = "Time (min)", breaks=c(10,20,30,40)) + 
+		scale_colour_manual(values = c('NL'="gray60","EL"="salmon","Rec"="royalblue")) +
 		theme_niwot() +
 		theme(legend.position = "bottom")
 dev.off()
 
-pdf("explore_smoothjitter_ELvsRec.pdf")
-subset(d2, ID %in% sample_ids ) %>%
-        group_by(ID, Treatment, Condition, Timepoint) %>%
-        summarise(avg_tpm = mean(tpm)) %>%
-        ggplot(aes(x = Timepoint, y = avg_tpm, colour=Treatment, linetype=Condition)) +
-                geom_line() +
-		geom_point(data=subset(d2, ID %in% sample_ids ),
-                     aes(x=Timepoint, y=tpm, colour=Treatment, shape=Condition), size=1, alpha=0.4) +
-                facet_wrap(~ID) +
-		coord_cartesian(ylim= c(0,1)) +
-                scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) +
-                scale_x_discrete(name = "Time (min)", breaks=c(10,20,30,40)) +
-                theme_niwot() +
-		theme(legend.position = "bottom")
-dev.off()
+library(lme4)
+library(piecewiseSEM)
+
+## setup df for model-based predictions
+n.preds=42
+r <- range(normData$Timepoint)
+exp_r <- unique(normData$Experiment)
+newdf <- data.frame(Timepoint=seq(r[1],r[2],length.out = n.preds)) %>%
+	mutate(Experiment = rep(exp_r, n.preds/length(unique(normData$Experiment) )))
+
+out <- NULL
+for( i in unique(normData$ID)){
+
+tmp <- subset(normData, ID == i)
+
+tmp1 <- subset(tmp, Condition == "NL")
+tmp2 <- subset(tmp, Condition == "EL")
+tmp3 <- subset(tmp, Condition == "Rec")
+
+possibleError <- tryCatch(mdl1 <- lmer(log_e ~ Timepoint + (1| Experiment), data=tmp1), 
+	error = function(e) e)
+
+if ( !inherits(possibleError, "error")) {
+	mdl1 <- lmer(log_e ~ Timepoint + (1|Experiment), data=tmp1)
+
+	rsq <- rsquared(mdl1)$Conditional
+	k <- -coefficients(mdl1)$Experiment$Timepoint[1]	
+	bic <- BIC(mdl1)
+	a1 <- data.frame(geneID=paste(i), bic, rsq, k, Condition=tmp1$Condition[1])	
+
+	
+	pred1 <- predict(mdl1, newdf, re.form=NA)
+
+	ggplot()+
+		theme_niwot() +
+		geom_point(aes(x=Timepoint, y=log_e), data=tmp1)+
+		geom_line(aes(x=newdf$Timepoint, y=pred1), colour="gray60", linetype='dashed')
+
+}
+
+	mdl2 <- lmer(log_e ~ Timepoint + (1| Experiment), data=subset(tmp, Condition == "EL"))
+	
+	rsq <- rsquared(mdl2)$Conditional
+	k <- -coefficients(mdl2)$Experiment$Timepoint[1]
+	bic <- BIC(mdl2)
+	a2 <- data.frame(geneID=paste(i), bic, rsq, k, Condition="High-light")	
+
+	mdl3 <- lmer(log_e ~ Timepoint + (1| Experiment), data=subset(tmp, Condition == "Rec"))
+
+	rsq <- rsquared(mdl3)$Conditional
+	k <- -coefficients(mdl3)$Experiment$Timepoint[1]
+	bic <- BIC(mdl3)
+	a3 <- data.frame(geneID=paste(i), bic, rsq, k, Condition="Recovery")
+
+tmp <- rbind(a1,a2,a3)
+tmp$half_life <- log(2)/tmp$k
+
+out <- rbind(out, tmp)
+
+}
 
 
