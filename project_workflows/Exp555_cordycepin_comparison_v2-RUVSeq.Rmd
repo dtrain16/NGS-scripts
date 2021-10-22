@@ -38,7 +38,7 @@ theme_niwot <- function(){
           panel.grid.minor.x = element_blank(),
           panel.grid.minor.y = element_blank(),
           panel.grid.major.y = element_blank(),  
-          plot.margin = unit(c(1, 1, 1, 1), units = , "cm"),
+          plot.margin = unit(c(0.5, .5, .5, .5), units = , "cm"),
           plot.title = element_text(size = 18, vjust = 1, hjust = 0),
           legend.text = element_text(size = 10),          
           legend.title = element_blank(),                              
@@ -180,56 +180,70 @@ input_p2 <- subset(input_p1, Timepoint == 10 & Condition == "EL") %>%
 input <- rbind(input_p1, input_p2)
 
 #####################
-### Normalization - T0 and decay factor
+### Reference genes
 ####################
 
-## Convert CPM to fractional decreases from T10 for each condition
-## Note, HL and Rec share the same 10 minute reference sample
+## make list of stable genes based on expression (cpm) and variance (cov)
+x <- subset(input, Treatment == "Mock") %>%
+	group_by(ID) %>%
+	summarise(mean_cpm = mean(cpm), cov = sd(cpm)/mean_cpm) %>%
+	arrange(mean_cpm)
+
+## <25th percentile COV & >98th percentile mean CPM
+refgenes <- subset(x, cov < quantile(x$cov, c(0.25)) & mean_cpm > quantile(x$mean_cpm, c(0.98)))
+
+y <- subset(input, Treatment == "Cordycepin") %>%
+        group_by(ID) %>%
+        summarise(mean_cpm = mean(cpm), cov = sd(cpm)/mean_cpm) %>%
+        arrange(mean_cpm)
+
+pdf("refgenes.pdf")
+ggplot(data=x) + aes(y=cov, x=log2(mean_cpm+0.01)) +
+        geom_jitter(data=subset(x, !(ID %in% refgenes$ID)), aes(color="genes"), size=0.5, alpha=0.3) +
+	geom_jitter(data=subset(x, ID %in% refgenes$ID), aes(color='reference genes')) +
+	ggtitle('Mock-treated samples') +
+	labs(color="Legend") +
+	scale_color_manual(values=c("genes"="black","reference genes"="salmon")) +
+	theme_niwot() +
+        scale_y_continuous(name = "Coefficient of variation") +
+        scale_x_continuous(name = "log2 [CPM+0.01]")
+
+ggplot(data=y) + aes(y=cov, x=log2(mean_cpm+0.01)) +
+        geom_jitter(data=subset(y, !(ID %in% refgenes$ID)), aes(color="genes"), size=0.5, alpha=0.3) +
+        geom_jitter(data=subset(y, ID %in% refgenes$ID), aes(color='reference genes')) +
+        ggtitle('Cordycepin-treated samples') +
+	labs(color="Legend") +
+        scale_color_manual(values=c("genes"="black","reference genes"="salmon")) +
+	theme_niwot() +
+        scale_y_continuous(name = "Coefficient of variation") +
+        scale_x_continuous(name = "log2 [CPM+0.01]")
+
+dev.off()
+
+#####################
+### t10 and decay factor normalization
+####################
+
+## compute mean cpm at t10 n.b. EL and Rec share t10
 t10 <- subset(input, Timepoint == 10) %>%
         group_by(ID, Timepoint, Treatment, Condition) %>%
-	mutate(cpm = as.numeric(paste0(cpm))) %>%
-	summarise(mean_cpm = mean(cpm))
+        mutate(cpm = as.numeric(paste0(cpm))) %>%
+        summarise(ref_cpm = mean(cpm))
 
-## scale values relative to t10 and apply decay factor normalization to cordycepin-treated samples
+## Convert CPM to fractional decreases relative to t10
 d1 <- subset(input, Treatment == "Cordycepin") %>%
-        mutate(t10_cpm = t10$mean_cpm[match(interaction(ID, Treatment, Condition),
+        mutate(t10_cpm = t10$ref_cpm[match(interaction(ID, Treatment, Condition),
                 interaction(t10$ID, t10$Treatment, t10$Condition))]) %>%
         mutate(frac_cpm = cpm/t10_cpm) %>%
         select(-cpm, -t10_cpm, -Treatment)
 
-## make list of stable genes based on expression (cpm) and variance (cov)
-x <- as.data.frame(cpm(normCounts(set1))) %>%
-        mutate(std = apply(X = ., MARGIN = 1, FUN = sd)) %>%
-        mutate(avg = rowMeans(., na.rm = T)) %>%
-        mutate(cov = std/avg)
-
-cv <- kmeans(x$cov, centers=10, iter.max= 100, algorithm="Lloyd")
-cv2 <- kmeans(log2(x$avg+0.01), centers=10, iter.max= 100, algorithm="Lloyd")
-
-## 20th percentile COV
-genes1 <- names(subset(cv$cluster, as.data.frame(cv$cluster)[,1] == order(cv$centers)[2]))
-## 90th percentile abundance
-genes2 <- names(subset(cv2$cluster, as.data.frame(cv2$cluster)[,1] == order(cv2$centers)[10]))
-## reference genes
-refgenes <- Reduce(intersect, list(genes1,genes2))
-
-pdf("refgenes.pdf")
-ggplot(data=subset(x, !(rownames(x) %in% refgenes))) + aes(y=cov, x=log2(avg+0.01)) +
-        geom_jitter(size=0.5, alpha=0.3) +
-	geom_jitter(data=subset(x, rownames(x) %in% refgenes), colour='salmon') +
-        theme_niwot() +
-        scale_y_continuous(name = "Coefficient of variation") +
-        scale_x_continuous(name = "log2 [TPM+0.01]")
-dev.off()
-
-## calclate decay factor for cordycepin-treated samples at each timepoint and condition
-normFactors_mean <- subset(d1, ID %in% refgenes) %>% 
-	group_by(Timepoint, Condition) %>%
+## calculate mean fold-change in reference genes in cordycepin-treated samples over time per condition
+normFactors_mean <- subset(d1, ID %in% refgenes$ID) %>% 
+	group_by(Timepoint, Condition, Experiment) %>%
 	summarise(decay_fac = mean(frac_cpm))
 
 ## apply decay normalization and filter any genes with a fold-increase after T10
-d2 <- mutate(d1, decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition), 
-	interaction(normFactors_mean$Timepoint, normFactors_mean$Condition))]) %>%
+d2 <- mutate(d1, decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
 	mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
 	mutate(test = ifelse(decaynorm_frac_cpm > 1.5 & Timepoint != 10, yes = 1, no = 0))
 
@@ -238,6 +252,31 @@ gene_filter <- subset(d2, test == 1) %>% select(ID) %>% unique
 normData <- select(d2, -frac_cpm, -test, -decay_fac) %>%
 	subset(!(ID %in% gene_filter$ID)) %>%
 	mutate(log_e = log(decaynorm_frac_cpm + 0.01))
+
+###########################
+#### Heatmap
+###########################
+
+my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum, -Experiment, -Treatment) %>%
+        column_to_rownames("Sample") %>%
+        mutate(Timepoint = as.factor(paste(Timepoint)))
+
+heatmap_input <- group_by(normData, ID, Timepoint, Condition) %>%
+        summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
+        mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
+        na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
+        spread(Sample, rel_cpm) %>% column_to_rownames('ID')
+
+pheatmap(as.matrix(heatmap_input),
+        annotation_col = my_grps,
+        cluster_cols=F,
+        filename = "heatmap_normalized_fractional.pdf",
+        scale = "none",
+        angle_col = 90,
+        show_rownames = F,
+        show_colnames = F,
+        fontsize = 6
+)
 
 ###########################
 ######### Data exploration 
@@ -265,34 +304,30 @@ subset(normData, ID %in% sample_ids ) %>%
 		theme(legend.position = "bottom")
 dev.off()
 
-## setup df for model-based predictions
-n.preds=42
-r <- range(normData$Timepoint)
-exp_r <- unique(normData$Experiment)
-newdf <- data.frame(Timepoint=seq(r[1],r[2],length.out = n.preds)) %>%
-	mutate(Experiment = rep(exp_r, n.preds/length(unique(normData$Experiment) )))
-
+###########################
+#### Modelling half-life
+###########################
 
 out <- NULL
 for( i in unique(normData$ID)){
 
 tmp <- subset(normData, ID == i)
 
-	for( c in unique(tmp$Condition)){
+	tmp_out <- NULL
+	for( c in  unique(tmp$Condition)){
 	
 	tmp1 <- subset(tmp, Condition == c)
 	possibleError <- tryCatch(fit <- lmer(log_e ~ Timepoint + (1| Experiment), data=tmp1), 
 		error = function(e) e)
 
-	tmp_out <- NULL
 	if ( !inherits(possibleError, "error")) {
 		fit <- lmer(log_e ~ Timepoint + (1|Experiment), data=tmp1)
 
 		rsq <- rsquared(fit)$Conditional
 		k <- -coefficients(fit)$Experiment$Timepoint[1]	
-		bic <- BIC(fit)
+		loglik <- as.numeric(logLik(fit))
 		half_life <- log(2)/k
-		a1 <- data.frame(geneID=i, bic, rsq, k, half_life, Condition=c)	
+		a1 <- data.frame(geneID=i, loglik, rsq, k, half_life, Condition=c)	
 		tmp_out <- rbind(tmp_out, a1)
 	}	
 }
@@ -301,6 +336,41 @@ out <- rbind(out, tmp_out)
 
 }
 
+p1 <- ggplot(out) + aes(x=loglik, colour=Condition, fill=Condition) + 
+	geom_histogram(alpha=0.3, position="identity") +
+	theme_niwot() +
+	theme(legend.position = 'none') +
+	scale_x_continuous(name = "Log-likelihood")
+
+p2 <- ggplot(out) + aes(x=rsq, colour=Condition, fill=Condition) +
+        geom_histogram(alpha=0.3, position="identity") +
+        theme_niwot() +
+	theme(legend.position = 'none') +
+        scale_x_continuous(name = "R-sq", breaks=c(0, 0.5, 1))
+
+p3 <- ggplot(out) + aes(x=k, colour=Condition, fill=Condition) +
+        geom_histogram(alpha=0.3, position="identity") +
+        theme_niwot() +
+	theme(legend.position = 'none') +
+        scale_x_continuous(name = "k-decay", breaks=c(0, 0.15))
+
+p4 <- ggplot(out) + aes(x=half_life, colour=Condition, fill=Condition) +
+        geom_histogram(binwidth=10, alpha=0.3, position="identity") +
+        theme_niwot() +
+	theme(legend.position = 'right') +
+	coord_cartesian(xlim=c(0, 1000)) +
+        scale_x_continuous(name = "Half-life (min)")
+
+pdf("Model parameters.pdf")
+(p1 + p2 + p3) / p4
+dev.off()
+
+## setup df for model-based predictions
+n.preds=42
+r <- range(normData$Timepoint)
+exp_r <- unique(normData$Experiment)
+newdf <- data.frame(Timepoint=seq(r[1],r[2],length.out = n.preds)) %>%
+        mutate(Experiment = rep(exp_r, n.preds/length(unique(normData$Experiment) )))
 
 ## produce sample plots
 
