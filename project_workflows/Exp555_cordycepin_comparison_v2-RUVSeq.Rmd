@@ -23,6 +23,7 @@ library(patchwork)
 library(RColorBrewer)
 library(lme4)
 library(piecewiseSEM)
+library(dabestr)
 
 # gg theme
 # source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
@@ -197,7 +198,7 @@ y <- subset(input, Treatment == "Cordycepin") %>%
         summarise(mean_cpm = mean(cpm), cov = sd(cpm)/mean_cpm) %>%
         arrange(mean_cpm)
 
-pdf("refgenes.pdf")
+pdf("MA-plot-refgenes.pdf")
 ggplot(data=x) + aes(y=cov, x=log2(mean_cpm+0.01)) +
         geom_jitter(data=subset(x, !(ID %in% refgenes$ID)), aes(color="genes"), size=0.5, alpha=0.3) +
 	geom_jitter(data=subset(x, ID %in% refgenes$ID), aes(color='reference genes')) +
@@ -205,6 +206,7 @@ ggplot(data=x) + aes(y=cov, x=log2(mean_cpm+0.01)) +
 	labs(color="Legend") +
 	scale_color_manual(values=c("genes"="black","reference genes"="salmon")) +
 	theme_niwot() +
+	coord_cartesian(ylim=c(0,4), xlim=c(-2,15)) +
         scale_y_continuous(name = "Coefficient of variation") +
         scale_x_continuous(name = "log2 [CPM+0.01]")
 
@@ -215,6 +217,7 @@ ggplot(data=y) + aes(y=cov, x=log2(mean_cpm+0.01)) +
 	labs(color="Legend") +
         scale_color_manual(values=c("genes"="black","reference genes"="salmon")) +
 	theme_niwot() +
+	coord_cartesian(ylim=c(0,4), xlim=c(-2,15)) +
         scale_y_continuous(name = "Coefficient of variation") +
         scale_x_continuous(name = "log2 [CPM+0.01]")
 
@@ -279,32 +282,6 @@ pheatmap(as.matrix(heatmap_input),
 )
 
 ###########################
-######### Data exploration 
-###########################
-
-### look at trends for random genes
-sample_ids <- sample(unique(normData$ID), size = 16, replace = FALSE)
-
-pdf("data_explore.pdf")
-subset(normData, ID %in% sample_ids ) %>%
-	group_by(ID, Timepoint, Condition) %>%
-	summarise(relative_abundance = mean(decaynorm_frac_cpm), 
-		reps = sum(!(is.na(decaynorm_frac_cpm))),
-		SE = sd(decaynorm_frac_cpm)/sqrt(reps)) %>%
-	ggplot(aes(x = Timepoint, y = relative_abundance, col = Condition)) + 
-		geom_line(linetype='dashed', size=0.5, alpha=0.6)+
-		geom_point(size=0.8) + 
-		geom_errorbar(aes(ymin=relative_abundance-SE, ymax=relative_abundance+SE), width=.8) +
-		facet_wrap(~ID) + 
-		coord_cartesian(ylim= c(0,1.25)) +
-		scale_y_continuous(name = "Relative abundance", breaks=c(0,1)) + 
-		scale_x_continuous(name = "Time (min)", breaks=c(10,20,30,40)) + 
-		scale_colour_manual(values = c('NL'="gray60","EL"="salmon","Rec"="royalblue")) +
-		theme_niwot() +
-		theme(legend.position = "bottom")
-dev.off()
-
-###########################
 #### Modelling half-life
 ###########################
 
@@ -325,9 +302,8 @@ tmp <- subset(normData, ID == i)
 
 		rsq <- rsquared(fit)$Conditional
 		k <- -coefficients(fit)$Experiment$Timepoint[1]	
-		loglik <- as.numeric(logLik(fit))
 		half_life <- log(2)/k
-		a1 <- data.frame(geneID=i, loglik, rsq, k, half_life, Condition=c)	
+		a1 <- data.frame(geneID=i, rsq, k, half_life, Condition=c)	
 		tmp_out <- rbind(tmp_out, a1)
 	}	
 }
@@ -336,17 +312,11 @@ out <- rbind(out, tmp_out)
 
 }
 
-p1 <- ggplot(out) + aes(x=loglik, colour=Condition, fill=Condition) + 
-	geom_histogram(alpha=0.3, position="identity") +
-	theme_niwot() +
-	theme(legend.position = 'none') +
-	scale_x_continuous(name = "Log-likelihood")
-
 p2 <- ggplot(out) + aes(x=rsq, colour=Condition, fill=Condition) +
         geom_histogram(alpha=0.3, position="identity") +
         theme_niwot() +
 	theme(legend.position = 'none') +
-        scale_x_continuous(name = "R-sq", breaks=c(0, 0.5, 1))
+        scale_x_continuous(name = "R^2", breaks=c(0, 0.5, 1))
 
 p3 <- ggplot(out) + aes(x=k, colour=Condition, fill=Condition) +
         geom_histogram(alpha=0.3, position="identity") +
@@ -357,33 +327,45 @@ p3 <- ggplot(out) + aes(x=k, colour=Condition, fill=Condition) +
 p4 <- ggplot(out) + aes(x=half_life, colour=Condition, fill=Condition) +
         geom_histogram(binwidth=10, alpha=0.3, position="identity") +
         theme_niwot() +
+	geom_vline(xintercept = median(subset(out, Condition == "NL")$half_life), colour = 'green') + 
+	geom_vline(xintercept = median(subset(out, Condition == "EL")$half_life), colour = 'red') +
+	geom_vline(xintercept = median(subset(out, Condition == "Rec")$half_life), colour = 'blue') +
 	theme(legend.position = 'right') +
-	coord_cartesian(xlim=c(0, 1000)) +
+	coord_cartesian(xlim=c(0, 500)) +
         scale_x_continuous(name = "Half-life (min)")
 
-pdf("Model parameters.pdf")
-(p1 + p2 + p3) / p4
+pdf("model_parameters.pdf")
+(p2 + p3) / p4
 dev.off()
 
-## setup df for model-based predictions
-n.preds=42
-r <- range(normData$Timepoint)
-exp_r <- unique(normData$Experiment)
-newdf <- data.frame(Timepoint=seq(r[1],r[2],length.out = n.preds)) %>%
-        mutate(Experiment = rep(exp_r, n.preds/length(unique(normData$Experiment) )))
+normData <- mutate(normData, rsq = out$rsq[match(interaction(ID,Condition), interaction(out$geneID,out$Condition))])
 
-## produce sample plots
+### sample random genes
+sample_ids <- c(
+	sample(unique(subset(normData, Condition == "Rec" & rsq > 0.5)$ID), size = 3, replace = FALSE),
+	sample(unique(subset(normData, Condition == "Rec" & rsq < 0.5)$ID), size = 3, replace = FALSE)
+)
+pdf("sample_model_fit.pdf")
+test <- subset(normData, ID %in% sample_ids ) %>%
+        group_by(ID, Timepoint, Condition) %>%
+        summarise(relative_abundance = mean(decaynorm_frac_cpm),
+                reps = sum(!(is.na(decaynorm_frac_cpm))),
+                SE = sd(decaynorm_frac_cpm)/sqrt(reps)) %>%
+	mutate(rsq = out$rsq[match(interaction(ID,Condition), interaction(out$geneID,out$Condition))]) %>% mutate(halflife=out$half_life[match(interaction(ID,Condition), interaction(out$geneID,out$Condition))])
 
-	pred1 <- predict(mdl1, newdf, re.form=NA)
-
-	ggplot()+
-		theme_niwot() +
-		geom_point(aes(x=Timepoint, y=log_e), data=tmp1)+
-		geom_line(aes(x=newdf$Timepoint, y=pred1), colour="gray60", linetype='dashed')
-
-}
-
-
+ggplot(data=test, aes(x = Timepoint, y = relative_abundance, col = Condition)) +
+	geom_line(linetype='dashed', size=0.5, alpha=0.4)+
+        geom_point(size=0.6) +
+        geom_errorbar(aes(ymin=relative_abundance-SE, ymax=relative_abundance+SE), width=.8) +
+        facet_grid(Condition~ID) +
+        coord_cartesian(ylim= c(0,1.4)) +
+        scale_y_continuous(name = "Relative abundance", breaks=c(0,0.5,1)) +
+        scale_x_continuous(name = "Time post-infiltration (min)", breaks=c(10,20,30,40)) +
+        theme_niwot() +
+        theme(legend.position = "bottom") +
+	geom_text(x=20, y=0, label=paste0("R2=",round(test$rsq,2)), size=2.5) +
+	geom_text(x=20, y=0.1, label=paste0("half-life=",round(test$halflife,2)), size=2.5)
+dev.off()
 
 
 
