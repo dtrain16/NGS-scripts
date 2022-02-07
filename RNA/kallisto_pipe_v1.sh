@@ -152,7 +152,7 @@ mv *fq.gz ../1_trimmed_fastq/
 
 ### extract quant files for local import
 cd ../../
-mkdir quant_files
+if [ ! -d "./quant_files" ]; then mkdir quant_files; fi
 fls=${name}_kallisto_${dow}
 for i in $fls; do echo $i; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant_files/$test; done
 
