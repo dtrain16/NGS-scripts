@@ -15,6 +15,7 @@ options(stringsAsFactors = FALSE)
 
 ## packages
 library(tidyverse)
+library(ggExtra)
 library(tximport)
 library(pheatmap)
 library(RUVSeq)
@@ -22,6 +23,7 @@ library(factoextra)
 library(patchwork)
 library(RColorBrewer)
 library(lme4)
+library(lmerTest)
 library(piecewiseSEM)
 library(dabestr)
 library(janitor)
@@ -135,7 +137,7 @@ set2 <- RUVs(set, genes, k=1, differences)
 ## colours
 clrs <- brewer.pal(6, "Set2")
 
-pdf("RLEplots.pdf")
+pdf("RUV_corrected_abundance.pdf")
 plotRLE(as.matrix(gene_tpm[keep,]), outline=FALSE, main = "TPM", 
 	ylim=c(-4, 4), col=clrs[metatable$Treatment])
 plotRLE(cpm(normCounts(set1)), outline=FALSE, main = "RUVr", 
@@ -249,9 +251,10 @@ normFactors_mean <- subset(d1, ID %in% refgenes$ID) %>%
 ## apply decay normalization and filter any genes with a fold-increase after T10
 d2 <- mutate(d1, decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
 	mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
-	mutate(test = ifelse(decaynorm_frac_cpm >= 1.5 & Timepoint != 10, yes = 1, no = 0))
+	mutate(test = ifelse(decaynorm_frac_cpm >= 1.5 & Timepoint != 10, yes = 1, no = 0)) %>%
+	mutate(test = ifelse(is.na(decaynorm_frac_cpm) == T, 2, test))
 
-gene_filter <- subset(d2, test == 1) %>% select(ID) %>% unique
+gene_filter <- subset(d2, test == 1 | is.na(test) == T | test == 2) %>% select(ID) %>% unique
 
 ## fractional CPM
 normData2 <- select(d2, -decaynorm_frac_cpm, -test, -decay_fac) %>%
@@ -263,9 +266,27 @@ normData <- select(d2, -frac_cpm, -test, -decay_fac) %>%
 	subset(!(ID %in% gene_filter$ID)) %>%
 	mutate(log_frac_cpm = log(decaynorm_frac_cpm + 0.01))
 
+## apply decay normalization and filter any genes with a fold-increase after T10 (NL only)
+d3 <- subset(d1, Condition == "NL") %>%                                                                   mutate(decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
+        mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
+        mutate(test = ifelse(decaynorm_frac_cpm >= 1.5 & Timepoint != 10, yes = 1, no = 0)) %>%
+	mutate(test = ifelse(is.na(decaynorm_frac_cpm) == T, 2, test))
+
+gene_filter <- subset(d3, test == 1 | is.na(test) == T | test == 2) %>% select(ID) %>% unique
+
+## fractional CPM normalized by decay factor for NL samples
+normData_NL <- select(d3, -frac_cpm, -test, -decay_fac) %>%
+        subset(!(ID %in% gene_filter$ID)) %>%
+        mutate(log_frac_cpm = log(decaynorm_frac_cpm + 0.01))
+
+## loci to undergo half-life modelling
+length(unique(normData_NL$ID))
+length(unique(normData$ID))
+
 ###########################
-#### evaluate RNA pool change using DGE in cordycepin samples
+#### evaluate normalization and RNA pool decrease
 ###########################
+
 x2 <- subset(metatable, Treatment=="Cordycepin") %>%
 	mutate(test=ifelse(test=duplicated(.[2:5]), 1, 0))
 
@@ -324,6 +345,10 @@ plotRLE(as.matrix(x1), outline=FALSE, ylim=c(-1, 1), main = "Fractional CPM + de
 
 dev.off()
 
+###########################
+#### evaluate cordycepin treatment based on DGE testing with RUVr adjusted counts
+###########################
+
 ### Setup edgeR object for DGE testing
 y2 <- as.data.frame(normCounts(set1))
 y2 <- DGEList(counts = y2, group=metatable$Sample)
@@ -345,7 +370,7 @@ cordycepin_Rec = Cordycepin_40_Rec - Cordycepin_10_EL,
 levels=design
 )
 
-input <- NULL
+dge <- NULL
 
 for(i in colnames(my.contrasts)){
   res <- glmQLFTest(fit, contrast = my.contrasts[,i])
@@ -353,14 +378,14 @@ for(i in colnames(my.contrasts)){
   tt$contrast <- paste(i)
   tt$ID <- rownames(tt)
   tt <- select(tt, ID, logCPM, contrast, logFC, FDR)
-  input <- rbind(input,tt)
+  dge <- rbind(dge,tt)
 }
 
-input <- mutate(input, DGE=ifelse(logFC > 0 & FDR < 0.05, yes = "Up-regulated", no=
+dge <- mutate(dge, DGE=ifelse(logFC > 0 & FDR < 0.05, yes = "Up-regulated", no=
                       ifelse(logFC < 0 & FDR < 0.05, yes='Down-regulated', no="Non-DGE")))
 
 pdf("DGE_testing.pdf")
-ggplot(data = input) + aes(x=logFC, y=-log10(FDR), group=contrast, colour=DGE) +
+ggplot(data = dge) + aes(x=logFC, y=-log10(FDR), group=contrast, colour=DGE) +
   geom_jitter(size=0.8) + 
   theme_niwot() +
   geom_hline(yintercept = -log10(0.05), linetype='dashed', col='salmon', alpha=0.5) +
@@ -377,19 +402,20 @@ dev.off()
 ###########################
 
 out1 <- NULL
-for( i in unique(normData$ID)){
+for( i in unique(normData_NL$ID)){
 	
-	tmp <- subset(normData, ID == i & Condition == "NL")
+	tmp <- subset(normData_NL, ID == i)
 	tmp_out <- NULL
 	possibleError <- tryCatch(fit <- lmer(log_frac_cpm ~ Timepoint + (1| Experiment), data=tmp), error = function(e) e)
 
 	if ( !inherits(possibleError, "error")) {
 		fit <- lmer(log_frac_cpm ~ Timepoint + (1|Experiment), data=tmp)
 		rsq <- rsquared(fit)$Conditional
+		pval <- anova(fit)$'Pr(>F)'
                 aic <- AIC(fit)
                 k <- -coefficients(fit)$Experiment$Timepoint[1]
                 halflife <- log(2)/k
-                a1 <- data.frame(geneID=i, rsq, aic, k, halflife, Condition=tmp$Condition[1])
+                a1 <- data.frame(geneID=i, rsq, pval, aic, k, halflife, Condition=tmp$Condition[1])
                 tmp_out <- rbind(tmp_out, a1)
         }
 
@@ -397,42 +423,29 @@ out1 <- rbind(out1, tmp_out)
 }
 
 ## filter genes
-out_NL <- subset(out1, rsq >= 0.5 & halflife > 0 & halflife < 1440)
+out_NL <- subset(out1, pval < 0.05 & k > 0)
 
-p2 <- ggplot(out_NL) + aes(x=rsq) +
-        geom_histogram(position="identity", col='black') +
+p1 <- ggplot(out_NL) + aes(x=k) +
+        geom_histogram(position="identity", bins=20) +
         theme_niwot() +
         theme(legend.position = 'none') +
-	coord_cartesian(xlim=c(0,1)) +
-        scale_x_continuous(name = "R-sq", breaks=c(0, 0.5, 1))
+        scale_x_continuous(name = "k-decay")
 
-p3 <- ggplot(out_NL) + aes(x=k) +
-        geom_histogram(position="identity", col='black') +
-        theme_niwot() +
-        theme(legend.position = 'none') +
-        scale_x_continuous(name = "k-decay", breaks=c(0, 0.15))
-
-p1 <- ggplot(out_NL) + aes(x=aic) +
-        geom_histogram(position="identity", col='black') +
-        theme_niwot() +
-        theme(legend.position = 'none') +
-        scale_x_continuous(name = "AIC")
-
-p5 <- ggplot(out_NL) + aes(x=rsq, y=halflife) +
+p2 <- ggplot(out_NL) + aes(x=rsq, y=halflife) +
         geom_point() +
         theme_niwot() +
 	coord_cartesian(xlim=c(0,1)) +
-        scale_x_continuous(name = "R-sq", breaks=c(0, 0.5, 1))+
+        scale_x_continuous(name = "R-sq")+
         scale_y_continuous(name = "Half-life (min)")
 
-p6 <- ggplot(out_NL) + aes(x=aic, y=halflife) +
+p3 <- ggplot(out_NL) + aes(x=pval, y=halflife) +
         geom_point() +
         theme_niwot() +
-        scale_x_continuous(name = "AIC")+
+        scale_x_continuous(name = "p-value")+
         scale_y_continuous(name = "Half-life (min)")
 
 pdf("model_parameters_NL.pdf")
-(p2 + p1 + p3) / (p5 + p6)
+p1 / ggMarginal(p2) + ggMarginal(p3)
 dev.off()
 
 ###########################
@@ -522,25 +535,33 @@ my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum, -Experiment, -Tre
         column_to_rownames("Sample") %>%
         mutate(Timepoint = as.factor(paste(Timepoint)))
 
+heatmap_input <- group_by(normData_NL, ID, Timepoint, Condition) %>%
+        summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
+        mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
+        na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
+        spread(Sample, rel_cpm) %>% column_to_rownames('ID')
+
+pheatmap(as.matrix(heatmap_input),
+        cluster_cols=F,
+        annotation_col = my_grps,
+	filename = "heatmap_normalized_fractional_NL.pdf",
+        scale = "none",
+        angle_col = 90,
+        show_rownames = F,
+        show_colnames = F,
+        fontsize = 6
+)
+
 heatmap_input <- group_by(normData, ID, Timepoint, Condition) %>%
         summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
         mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
         na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
         spread(Sample, rel_cpm) %>% column_to_rownames('ID')
 
-o1 <- subset(out, Condition == "NL")
-o2 <- subset(out, Condition == "EL")
-o3 <- subset(out, Condition == "Rec")
-
-row_grps <- dplyr::select(normData, ID) %>% unique %>% tibble %>%
-	mutate(rsq1 = o1$rsq[match(ID, o1$geneID)], rsq2= o2$rsq[match(ID, o2$geneID)],  rsq3= o3$rsq[match(ID, o3$geneID)]) %>%
-	column_to_rownames("ID")
-
 pheatmap(as.matrix(heatmap_input),
         annotation_col = my_grps,
-	annotation_row = row_grps,
         cluster_cols=F,
-        filename = "heatmap_normalized_fractional.pdf",
+        filename = "heatmap_normalized_fractional_all.pdf",
         scale = "none",
         angle_col = 90,
         show_rownames = F,
@@ -641,17 +662,21 @@ common_genes <- Reduce(intersect, list(b1$geneID, b2$geneID, b3$geneID, b4$geneI
 
 w1 <- rbind(b1,b2,b3,b4,b5) %>%
 	subset(geneID %in% common_genes) %>%
-	mutate(Condition = factor(Condition, levels = c("NL","Narsai", "Sorenson", "Szabo", "Chantarachot"))) %>%
+	mutate(Condition = gsub("NL","Smith",Condition)) %>%
+	mutate(Condition = factor(Condition, levels = c("Smith","Narsai", "Sorenson", "Szabo", "Chantarachot"))) %>%
 	mutate(geneID = as.character(geneID)) %>%
 	mutate(log_halflife = log2(halflife + 0.01))
 
-test2 <- dabest(.data = w1, x = Condition, y = log_halflife, 
-	idx = c("NL", "Sorenson", "Szabo"),
-	#idx = c("NL","Narsai", "Sorenson", "Szabo", "Chantarachot"), 
+test <- dabest(.data = w1, x = Condition, y = halflife, 
+	idx = c("Smith","Narsai", "Sorenson", "Szabo", "Chantarachot"), 
 	paired=FALSE)
 
+test1 <- cliffs_delta(test, reps=10000)
+test2 <- mean_diff(test, reps=10000)
+
 pdf("dabest_v1.pdf")
-plot(cliffs_delta(test2, reps=10000), rawplot.ylabel = "log2[half-life + 0.01] (min)")
+plot(test1, rawplot.ylabel = "half-life (min)")
+plot(test2, rawplot.ylabel = "half-life (min)")
 dev.off()
 
 
