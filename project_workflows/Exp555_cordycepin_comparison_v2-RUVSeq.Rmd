@@ -434,7 +434,7 @@ p1 <- ggplot(out_NL) + aes(x=k) +
 p2 <- ggplot(out_NL) + aes(x=rsq, y=halflife) +
         geom_point() +
         theme_niwot() +
-	coord_cartesian(xlim=c(0,1)) +
+	#coord_cartesian(xlim=c(0,1)) +
         scale_x_continuous(name = "R-sq")+
         scale_y_continuous(name = "Half-life (min)")
 
@@ -445,7 +445,7 @@ p3 <- ggplot(out_NL) + aes(x=pval, y=halflife) +
         scale_y_continuous(name = "Half-life (min)")
 
 pdf("model_parameters_NL.pdf")
-p1 / ggMarginal(p2) + ggMarginal(p3)
+p1 / ggMarginal(p2, type = "histogram") + ggMarginal(p3, type = "histogram")
 dev.off()
 
 ###########################
@@ -469,10 +469,11 @@ tmp <- subset(normData, ID == i)
 		fit <- lmer(log_frac_cpm ~ Timepoint + (1|Experiment), data=tmp1)
 
 		rsq <- rsquared(fit)$Conditional
+                pval <- anova(fit)$'Pr(>F)'
 		aic <- AIC(fit)
 		k <- -coefficients(fit)$Experiment$Timepoint[1]	
 		halflife <- log(2)/k
-		a1 <- data.frame(geneID=i, rsq, aic, k, halflife, Condition=c)	
+		a1 <- data.frame(geneID=i, rsq, pval, aic, k, halflife, Condition=c)	
 		tmp_out <- rbind(tmp_out, a1)
 	}	
 }
@@ -482,49 +483,33 @@ out2$Condition <- factor(out2$Condition, levels=c("NL","EL","Rec"))
 }
 
 ## filter genes
-out <- subset(out2, rsq >= 0.05 & halflife > 0 & halflife < 1440)
+out2_filt <- unique(subset(out2, pval > 0.05 | k < 0)$geneID)
+out_all <- subset(out2, !(geneID %in% out2_filt)) %>%
+	mutate(log_halflife = log2(halflife))
 
-p2 <- ggplot(out) + aes(x=rsq, colour=Condition, fill=Condition) +
-        geom_histogram(alpha=0.3, position="identity") +
+p1 <- ggplot(out_all) + aes(x=k, colour=Condition, fill=Condition) +
+        geom_histogram(position="identity", bins=20, alpha=0.5) +
         theme_niwot() +
 	theme(legend.position = 'none') +
-        scale_x_continuous(name = "R2", breaks=c(0, 0.5, 1))
+        scale_x_continuous(name = "k-decay")
 
-p3 <- ggplot(out) + aes(x=k, colour=Condition, fill=Condition) +
-        geom_histogram(alpha=0.3, position="identity") +
-        theme_niwot() +
-	theme(legend.position = 'none') +
-        scale_x_continuous(name = "k-decay", breaks=c(0, 0.15))
-
-p1 <- ggplot(out) + aes(x=aic, colour=Condition, fill=Condition) +
-        geom_histogram(alpha=0.3, position="identity") +
-        theme_niwot() +
-        theme(legend.position = 'none') +
-	scale_x_continuous(name = "AIC")
-
-p4 <- ggplot(out) + aes(x=Condition, y=log2(halflife), fill=Condition) +
-        geom_boxplot(position="identity") +
-        theme_niwot() +
-	theme(legend.position = 'right') +
-        scale_y_continuous(name = "Half-life (min)")
-
-p5 <- ggplot(out) + aes(x=rsq, y=log2(halflife), color=Condition) +
+p2 <- ggplot(out_all) + aes(x=rsq, y=halflife, color=Condition) +
         geom_point() +
         theme_niwot() +
-	facet_wrap(~Condition) +
-	scale_x_continuous(name = "R-sq", breaks=c(0, 0.5, 1))+
+	#facet_wrap(~Condition) +
+	#coord_cartesian(xlim=c(0,1)) +
+	scale_x_continuous(name = "R-sq")+
         scale_y_continuous(name = "Half-life (min)")
 
-p6 <- ggplot(out) + aes(x=aic, y=log2(halflife), color=Condition) +
+p3 <- ggplot(out_all) + aes(x=pval, y=halflife, color=Condition) +
         geom_point() +
         theme_niwot() +
-	facet_wrap(~Condition) +
-        scale_x_continuous(name = "AIC")+
+	#facet_wrap(~Condition) +
+        scale_x_continuous(name = "p-value")+
         scale_y_continuous(name = "Half-life (min)")
 
-pdf("model_parameters.pdf")
-(p2 + p1) / (p3 + p4)
-p5 / p6
+pdf("model_parameters_all.pdf")
+p1 / ggMarginal(p2, groupColour = TRUE, groupFill = TRUE, type = "histogram") + ggMarginal(p3, groupColour = TRUE, groupFill = TRUE, type = "histogram")
 dev.off()
 
 ###########################
@@ -618,6 +603,9 @@ dev.off()
 ## Estimation plots
 ##########################
 
+###
+### Between studies NL
+
 b1 <- select(out_NL, geneID, halflife, Condition)
 
 ## read in other datasets
@@ -667,16 +655,62 @@ w1 <- rbind(b1,b2,b3,b4,b5) %>%
 	mutate(geneID = as.character(geneID)) %>%
 	mutate(log_halflife = log2(halflife + 0.01))
 
-test <- dabest(.data = w1, x = Condition, y = halflife, 
-	idx = c("Smith","Narsai", "Sorenson", "Szabo", "Chantarachot"), 
+test <- dabest(.data = w1, x = Condition, 
+	#y = halflife, 
+	y = log_halflife,
+	idx = c("Smith", "Narsai", "Sorenson", "Szabo", "Chantarachot"), 
 	paired=FALSE)
 
 test1 <- cliffs_delta(test, reps=10000)
 test2 <- mean_diff(test, reps=10000)
 
-pdf("dabest_v1.pdf")
-plot(test1, rawplot.ylabel = "half-life (min)")
-plot(test2, rawplot.ylabel = "half-life (min)")
+pdf("dabest_NL_log2.pdf")
+#plot(test1, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+#plot(test2, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+
+ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
+	geom_boxplot() +
+	stat_boxplot(geom="errorbar", width=0.5) +
+	theme_niwot() +
+	scale_y_continuous(name="log2 half-life + 0.01 (min)") +
+	scale_x_discrete(name="Dataset") +
+	annotate("text", parse=TRUE,
+		x=c(test2$result$control_group[1], test2$result$test_group),
+		y=max(test2$data$log_halflife)*1.1,
+		label=paste0("theta=", round(c(0,test2$result$difference),2))) +
+	annotate("text", parse=TRUE,
+		x=c(test1$result$control_group[1], test1$result$test_group), 
+		y=max(test1$data$log_halflife)*1.05,
+		label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
+dev.off()
+
+###
+### Between conditions
+
+test <- dabest(.data = out_all, 
+	x = Condition,
+        y = log_halflife,
+        idx = c("NL", "EL", "Rec"),
+        paired=FALSE)
+
+test1 <- cliffs_delta(test, reps=10000)
+test2 <- mean_diff(test, reps=10000)
+
+pdf("dabest_all_log2.pdf")
+#plot(test1, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+#plot(test2, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+
+ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
+        geom_boxplot() +
+        stat_boxplot(geom="errorbar", width=0.5) +
+        theme_niwot() +
+        scale_y_continuous(name="log2 half-life + 0.01 (min)") +
+        scale_x_discrete(name="Dataset") +
+        annotate("text", parse=TRUE,                                                                             x=c(test2$result$control_group[1], test2$result$test_group),                                     y=max(test2$data$log_halflife)*1.1,                                                              label=paste0("theta=", round(c(0,test2$result$difference),2))) +                         annotate("text", parse=TRUE,
+                x=c(test1$result$control_group[1], test1$result$test_group),
+                y=max(test1$data$log_halflife)*1.05,
+                label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
+
 dev.off()
 
 
