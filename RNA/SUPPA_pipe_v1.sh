@@ -8,7 +8,7 @@ set -u
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
 echo "USAGE: SUPPA_pipe_v1.sh <annotation> <file dir> <group1> <group2> <name>"
-echo "EXAMPLE: SUPPA_pipe_v1.sh $HOME/ref_seqs/AtRTD2/AtRTD2_QUASI_19April2016.gtf $HOME/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
+echo "EXAMPLE: SUPPA_pipe_v1.sh /home/diepg/ref_seqs/AtRTD2/AtRTD2_QUASI_19April2016.gtf /home/diepg/ws/sal1_AS/raw_files/ col0_rep1,col0_rep2,col0_rep3 grp7_rep1,grp7_rep2,grp7_rep3 RTD2-quasi"
 exit 1
 fi
 
