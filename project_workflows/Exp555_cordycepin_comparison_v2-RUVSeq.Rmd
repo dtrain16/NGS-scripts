@@ -27,6 +27,7 @@ library(lmerTest)
 library(piecewiseSEM)
 library(dabestr)
 library(janitor)
+library(VennDiagram)
 
 # gg theme
 # source: https://ourcodingclub.github.io/tutorials/dataviz-beautification/
@@ -393,7 +394,16 @@ ggplot(data = dge) + aes(x=logFC, y=-log10(FDR), group=contrast, colour=DGE) +
   facet_wrap(~contrast) +
   scale_x_continuous(name = "log2 fold-change", limits = c(-8,8)) +
   scale_y_continuous(name = "-log10 p-value") +
-  scale_colour_manual(values = c('Down-regulated'="royalblue","Non-DGE"="lightgrey","Up-regulated"="salmon"))
+  scale_colour_manual(values = c('Down-regulated'="royalblue","Non-DGE"="lightgrey","Up-regulated"="khaki1"))
+
+ggplot(data=subset(dge, DGE != "Non-DGE")) + aes(x=logCPM, y=logFC, group=contrast, colour=DGE) +
+  geom_jitter(size=0.8) +
+  theme_niwot() +
+  geom_hline(yintercept = 0, linetype='dashed', col='salmon', alpha=0.5) +
+  facet_wrap(~contrast) +
+  scale_y_continuous(name = "log2 fold-change", limits = c(-8,8)) +
+  scale_x_continuous(name = "log2 CPM") +
+  scale_colour_manual(values = c('Down-regulated'="royalblue","Up-regulated"="khaki1","Non-DGE"="lightgrey"))
 
 dev.off()
 
@@ -656,13 +666,14 @@ w1 <- rbind(b1,b2,b3,b4,b5) %>%
 	mutate(log_halflife = log2(halflife + 0.01))
 
 test <- dabest(.data = w1, x = Condition, 
-	#y = halflife, 
-	y = log_halflife,
+	y = halflife, 
+	#y = log_halflife,
 	idx = c("Smith", "Narsai", "Sorenson", "Szabo", "Chantarachot"), 
 	paired=FALSE)
 
 test1 <- cliffs_delta(test, reps=10000)
 test2 <- mean_diff(test, reps=10000)
+test3 <- median_diff(test, reps=10000)
 
 pdf("dabest_NL_log2.pdf")
 #plot(test1, rawplot.ylabel = "log2 half-life + 0.01 (min)")
@@ -684,12 +695,29 @@ ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
 		label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
 dev.off()
 
+a1 <- data.frame(test = test3$result$test_group, diff = test3$result$difference)
+a <- select(w1, geneID, Condition, halflife) %>% 
+	spread(Condition, halflife) %>%
+	gather(group, halflife, -geneID, -Smith) %>%
+	mutate(diff = a1$diff[match(group, a1$test)]) %>%
+	imutate(x = halflife - Smith) %>%
+	mutate(test = ifelse(x > diff, yes = 1, no = 0))
+
+a_venn <- select(a, geneID, group, test) %>% spread(group, test)
+
+a2 <- data.frame(geneID = a_venn$geneID, overlaps = rowSums(a_venn[2:5])) %>%
+	subset(overlaps > 2)
+
+pdf("venn_Smith_low-halflife.pdf")
+vennDiagram(a_venn[2:5], mar=c(2,2,2,2), lwd=1, cex=1)
+dev.off()
+
 ###
 ### Between conditions
 
 test <- dabest(.data = out_all, 
 	x = Condition,
-        y = log_halflife,
+        y = halflife,
         idx = c("NL", "EL", "Rec"),
         paired=FALSE)
 
@@ -704,9 +732,13 @@ ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
         geom_boxplot() +
         stat_boxplot(geom="errorbar", width=0.5) +
         theme_niwot() +
-        scale_y_continuous(name="log2 half-life + 0.01 (min)") +
+	scale_y_continuous(name="log2 half-life + 0.01 (min)") +
         scale_x_discrete(name="Dataset") +
-        annotate("text", parse=TRUE,                                                                             x=c(test2$result$control_group[1], test2$result$test_group),                                     y=max(test2$data$log_halflife)*1.1,                                                              label=paste0("theta=", round(c(0,test2$result$difference),2))) +                         annotate("text", parse=TRUE,
+        annotate("text", parse=TRUE, 
+		x=c(test2$result$control_group[1], test2$result$test_group),
+		y=max(test2$data$log_halflife)*1.1,
+		label=paste0("theta=", round(c(0,test2$result$difference),2))) +
+	annotate("text", parse=TRUE,
                 x=c(test1$result$control_group[1], test1$result$test_group),
                 y=max(test1$data$log_halflife)*1.05,
                 label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
