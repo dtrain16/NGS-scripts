@@ -567,6 +567,7 @@ pheatmap(as.matrix(heatmap_input),
 ###############################
 ## decay profile of sample genes
 ##############################
+
 sample_ids <- sample(unique(out$geneID), size = 8, replace = FALSE)
 
 pdf("sample_model_fit.pdf")
@@ -610,7 +611,7 @@ ggplot(data=test, aes(x = Timepoint, y = log_frac_cpm, col = Condition)) +
 dev.off()
 
 ##########################
-## Estimation plots
+## Compute half-life differences between studies
 ##########################
 
 ###
@@ -712,8 +713,9 @@ pdf("venn_Smith_low-halflife.pdf")
 vennDiagram(a_venn[2:5], mar=c(2,2,2,2), lwd=1, cex=1)
 dev.off()
 
-###
-### Between conditions
+################
+### Compute half-life difference between conditions
+###############
 
 test <- dabest(.data = out_all, 
 	x = Condition,
@@ -759,8 +761,10 @@ a_venn <- select(a, geneID, group, test) %>% spread(group, test)
 
 subset(a_venn, EL == 1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
 
-######
-## mRNA half-life vs polysome-RNA
+##################
+## mRNA half-life vs translation (polysome-RNA abundance and RPL)
+#################
+
 polyR <- dir("polysome_rna/") %>% tibble() %>% 
 	mutate(file_contents = map(., ~read_csv(file.path("polysome_rna", .)))) %>%
 	unnest(cols=c(file_contents)) %>%
@@ -770,14 +774,53 @@ polyR <- dir("polysome_rna/") %>% tibble() %>%
 	mutate(time = paste0('t',time)) %>%
 	mutate(sample = sapply(strsplit(sample, "_"), function(l) paste0(l[1],l[2]))) %>%
 	group_by(ID,type,time) %>% summarise(avg_rpkm = mean(rpkm)) %>%
-	subset(time == 't30' | time == 't90') %>%
-	spread(type, avg_rpkm)
+	subset(time == 't0' | time == 't30' | time == 't90') %>%
+	spread(type, avg_rpkm) %>%
+	mutate(rpl = poly/total) %>%
+	mutate(Condition = ifelse(time == "t30", "EL", ifelse(time == "t0", "NL", "Rec"))) %>%
+	left_join(out_all, by=c("ID" = "geneID", "Condition" = "Condition")) %>%
+	subset(is.na(halflife) == F) %>%
+	mutate(Condition = factor(Condition, levels = c("NL","EL","Rec"))) %>%
+	na.omit()
 
+pdf("poly_vs_halflife.pdf")
+p1 <- ggplot(data=polyR) + aes(x=halflife, y=poly) +
+	geom_point(aes(colour=Condition)) +
+	theme_niwot() +
+	facet_wrap(~Condition, nrow=1) + 
+	geom_smooth(method="lm") +
+	scale_y_continuous(name="Mean RPKM", trans='log10') +
+        scale_x_continuous(name="Half-life (min)")
 
+p2 <- ggplot(data=polyR) + aes(x=halflife, y=rpl) +
+        geom_point(aes(colour=Condition)) +
+        theme_niwot() +
+        facet_wrap(~Condition, nrow=1) +
+	geom_smooth(method="lm") +
+        scale_y_continuous(name="Mean RPL", trans='log10') +
+        scale_x_continuous(name="Half-life (min)")
 
+p1 / p2
 
+dev.off()
 
+a <- subset(polyR, Condition == "NL")
+cor(x=a$halflife, y=a$poly, method="pearson")
+lm(formula = poly ~ halflife, data = a)
+cor(x=a$halflife, y=a$rpl, method="pearson")
+lm(formula = rpl ~ halflife, data = a)
 
+a <- subset(polyR, Condition == "EL")
+cor(x=a$halflife, y=a$poly, method="pearson")
+lm(formula = poly ~ halflife, data = a)
+cor(x=a$halflife, y=a$rpl, method="pearson")
+lm(formula = rpl ~ halflife, data = a)
+
+a <- subset(polyR, Condition == "Rec")
+cor(x=a$halflife, y=a$poly, method="pearson")
+lm(formula = poly ~ halflife, data = a)
+cor(x=a$halflife, y=a$rpl, method="pearson")
+lm(formula = rpl ~ halflife, data = a)
 
 
 
