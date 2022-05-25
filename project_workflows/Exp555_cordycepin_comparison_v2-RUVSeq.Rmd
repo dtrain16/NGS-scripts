@@ -720,16 +720,16 @@ dev.off()
 test <- dabest(.data = out_all, 
 	x = Condition,
         y = halflife,
-        idx = c("NL", "EL", "Rec"),
-        paired=TRUE, id.col = "geneID")
+        #idx = c("NL", "EL", "Rec"),
+        idx = list(c("NL","EL"), c("NL","Rec")),
+	paired=TRUE, id.col = "geneID")
 
 test1 <- cliffs_delta(test, reps=10000)
 test2 <- mean_diff(test, reps=10000)
 test3 <- median_diff(test, reps=10000)
 
 pdf("dabest_all_log2.pdf")
-#plot(test1, rawplot.ylabel = "log2 half-life + 0.01 (min)")
-#plot(test2, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+plot(test3, rawplot.ylabel = "log2 half-life + 0.01 (min)")
 
 ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
         geom_boxplot() +
@@ -760,6 +760,59 @@ a <- select(out_all, geneID, Condition, halflife) %>%
 a_venn <- select(a, geneID, group, test) %>% spread(group, test)
 
 subset(a_venn, EL == 1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
+
+##################
+## mRNA half-life vs mRNA fold-change
+#################
+
+fit <- glmQLFit(y2, design, robust=TRUE)
+
+my.contrasts <- makeContrasts(
+	mock_ELvsNL = Mock_10_EL - Mock_10_NL,
+	levels=design
+)
+
+dge2 <- NULL
+
+for(i in colnames(my.contrasts)){
+  res <- glmQLFTest(fit, contrast = my.contrasts[,i])
+  tt <- topTags(res, adjust.method = "fdr", sort.by = "none", p.value=1, n=dim(res)[1])$table
+  tt$contrast <- paste(i)
+  tt$ID <- rownames(tt)
+  tt <- select(tt, ID, logCPM, contrast, logFC, FDR)
+  dge2 <- rbind(dge2,tt)
+}
+
+half_ratio <- out_all %>% 
+	select(geneID, halflife, Condition) %>% 
+	spread(Condition, halflife) %>%
+	mutate(t_ratio_HL = EL/NL) %>%
+	mutate(logfc = dge2$logFC[match(geneID,dge2$ID)]) %>%
+	mutate(logcpm = dge2$logCPM[match(geneID,dge2$ID)]) %>%
+	mutate(fold_change = 2^logfc)
+
+pdf("mRNA-FC_vs_halflife-ratio.pdf")
+p1 <- ggplot(data=half_ratio) + aes(x=t_ratio_HL, y=fold_change) + 
+	theme_niwot() +
+	geom_point() +
+	geom_smooth(method='lm', formula = y~x) + 
+	scale_y_continuous(name = "mRNA relative abundance", trans = "log10") +
+        scale_x_continuous(name = "mRNA half-life ratio", trans = "log10")
+
+p2 <- ggplot(data=half_ratio) + aes(x=logcpm, y=t_ratio_HL) + 
+	theme_niwot() +
+        geom_point() +
+        scale_y_continuous(name = "mRNA half-life ratio") +
+        scale_x_continuous(name = "mRNA abundance")
+
+p1 
+
+p2
+
+dev.off()
+
+summary(lm(formula = fold_change ~ t_ratio_HL, data = half_ratio))
+cor(half_ratio$fold_change, half_ratio$t_ratio_HL)
 
 ##################
 ## mRNA half-life vs translation (polysome-RNA abundance and RPL)
