@@ -783,21 +783,30 @@ for(i in colnames(my.contrasts)){
   dge2 <- rbind(dge2,tt)
 }
 
+rrgd <- read_csv("TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
+  select(-c(3:6,33:ncol(.))) %>%
+  clean_names %>% subset(rrgd_loci == "RRGD")
+
 half_ratio <- out_all %>% 
 	select(geneID, halflife, Condition) %>% 
 	spread(Condition, halflife) %>%
 	mutate(t_ratio_HL = EL/NL) %>%
 	mutate(logfc = dge2$logFC[match(geneID,dge2$ID)]) %>%
 	mutate(logcpm = dge2$logCPM[match(geneID,dge2$ID)]) %>%
-	mutate(fold_change = 2^logfc)
+	mutate(fold_change = 2^logfc) %>%
+	mutate(loci = rrgd$rrgd_loci[match(geneID, rrgd$locus_identifier)]) %>%
+	mutate(loci = ifelse(is.na(loci) == T, yes="non", no="RRGD")) %>%
+	mutate(loci = factor(loci, levels = c("non","RRGD")))
 
 pdf("mRNA-FC_vs_halflife-ratio.pdf")
 p1 <- ggplot(data=half_ratio) + aes(x=t_ratio_HL, y=fold_change) + 
 	theme_niwot() +
-	geom_point() +
+	geom_point(aes(colour=loci, alpha=loci)) +
 	geom_smooth(method='lm', formula = y~x) + 
 	scale_y_continuous(name = "mRNA relative abundance", trans = "log10") +
-        scale_x_continuous(name = "mRNA half-life ratio", trans = "log10")
+        scale_x_continuous(name = "mRNA half-life ratio", trans = "log10") +
+	scale_colour_manual(values = c("black", "salmon")) +
+	scale_alpha_manual(values = c(0.6,1.4))
 
 p2 <- ggplot(data=half_ratio) + aes(x=logcpm, y=t_ratio_HL) + 
 	theme_niwot() +
@@ -805,14 +814,15 @@ p2 <- ggplot(data=half_ratio) + aes(x=logcpm, y=t_ratio_HL) +
         scale_y_continuous(name = "mRNA half-life ratio") +
         scale_x_continuous(name = "mRNA abundance")
 
-p1 
-
 p2
+
+p1
 
 dev.off()
 
 summary(lm(formula = fold_change ~ t_ratio_HL, data = half_ratio))
 cor(half_ratio$fold_change, half_ratio$t_ratio_HL)
+  subset(rrgd_loci == "RRGD")
 
 ##################
 ## mRNA half-life vs translation (polysome-RNA abundance and RPL)
