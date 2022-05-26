@@ -721,7 +721,7 @@ test <- dabest(.data = out_all,
 	x = Condition,
         y = halflife,
         #idx = c("NL", "EL", "Rec"),
-        idx = list(c("NL","EL"), c("NL","Rec")),
+        idx = c("NL","EL"),
 	paired=TRUE, id.col = "geneID")
 
 test1 <- cliffs_delta(test, reps=10000)
@@ -729,7 +729,8 @@ test2 <- mean_diff(test, reps=10000)
 test3 <- median_diff(test, reps=10000)
 
 pdf("dabest_all_log2.pdf")
-plot(test3, rawplot.ylabel = "log2 half-life + 0.01 (min)")
+plot(test2, slopegraph = TRUE)
+plot(test3, slopegraph = TRUE)
 
 ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
         geom_boxplot() +
@@ -745,7 +746,6 @@ ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
                 x=c(test1$result$control_group[1], test1$result$test_group),
                 y=max(test1$data$log_halflife)*1.05,
                 label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
-
 dev.off()
 
 a1 <- data.frame(test = test3$result$test_group, diff = test3$result$difference)
