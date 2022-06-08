@@ -99,7 +99,7 @@ echo "Beginning alignment ..."
 
 # subjunc aligner 
 subjunc -T 4 -i $index -r ${fq%%.fastq*}_trimmed.fastq* -o  "${fileID}.bam" 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-./subjunc [options] -i <index_name> -r <input> -o <output>
+
 if [[ $fq%%.fastq}* != *".gz" ]]; then gzip ${fq%%.fastq*}_trimmed.fastq; fi
 
 echo "cleaning..."
