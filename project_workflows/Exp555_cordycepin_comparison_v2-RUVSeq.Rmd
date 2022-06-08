@@ -791,6 +791,7 @@ half_ratio <- out_all %>%
 	select(geneID, halflife, Condition) %>% 
 	spread(Condition, halflife) %>%
 	mutate(t_ratio_HL = EL/NL) %>%
+	mutate(t_ratio_REC = Rec/EL) %>%
 	mutate(logfc = dge2$logFC[match(geneID,dge2$ID)]) %>%
 	mutate(logcpm = dge2$logCPM[match(geneID,dge2$ID)]) %>%
 	mutate(fold_change = 2^logfc) %>%
@@ -837,55 +838,82 @@ polyR <- dir("polysome_rna/") %>% tibble() %>%
 	mutate(time = paste0('t',time)) %>%
 	mutate(sample = sapply(strsplit(sample, "_"), function(l) paste0(l[1],l[2]))) %>%
 	group_by(ID,type,time) %>% summarise(avg_rpkm = mean(rpkm)) %>%
-	subset(time == 't0' | time == 't30' | time == 't90') %>%
+	subset(time == 't0' | time == 't30' | time == 't60' | time == 't90') %>%
 	spread(type, avg_rpkm) %>%
 	mutate(rpl = poly/total) %>%
-	mutate(Condition = ifelse(time == "t30", "EL", ifelse(time == "t0", "NL", "Rec"))) %>%
-	left_join(out_all, by=c("ID" = "geneID", "Condition" = "Condition")) %>%
-	subset(is.na(halflife) == F) %>%
-	mutate(Condition = factor(Condition, levels = c("NL","EL","Rec"))) %>%
-	na.omit()
+	gather(type, rpkm, -ID, -time) %>%
+	subset(type != "total") %>%
+	spread(time, rpkm) %>%
+	mutate(fc_30 = t30/t0, fc_60 = t60/t30, fc_90 = t90/t60) %>%
+	mutate(t_ratio_HL = half_ratio$t_ratio_HL[match(ID, half_ratio$geneID)]) %>%
+	mutate(t_ratio_REC = half_ratio$t_ratio_HL[match(ID, half_ratio$geneID)]) %>%
+	na.omit()  %>%
+        mutate(loci = rrgd$rrgd_loci[match(ID, rrgd$locus_identifier)]) %>%
+        mutate(loci = ifelse(is.na(loci) == T, yes="non", no="RRGD")) %>%
+        mutate(loci = factor(loci, levels = c("non","RRGD")))
 
-pdf("poly_vs_halflife.pdf")
-p1 <- ggplot(data=polyR) + aes(x=halflife, y=poly) +
-	geom_point(aes(colour=Condition)) +
+pdf("rpl_vs_halflife.pdf", paper='a4')
+p1 <- ggplot(data=polyR) + aes(x=log2(t_ratio_HL), y=log2(fc_30)) +
 	theme_niwot() +
-	facet_wrap(~Condition, nrow=1) + 
-	geom_smooth(method="lm") +
-	scale_y_continuous(name="Mean RPKM", trans='log10') +
-        scale_x_continuous(name="Half-life (min)")
+        geom_point(aes(colour=loci, alpha=loci)) +
+        geom_smooth(method='lm', formula = y~x) +
+        scale_y_continuous(name = "log2FC RPL", breaks=c(-5,0,5)) +
+	geom_hline(yintercept = c(log2(1.5),-log2(1.5)), type = 'dashed') +
+        scale_x_continuous(name = "log2FC half-life \n (HL : US)", breaks=c(-5,0,5)) +
+	geom_vline(xintercept = c(log2(1.5),-log2(1.5)), type = 'dashed') +
+        scale_colour_manual(values = c("black", "salmon")) +
+        scale_alpha_manual(values = c(0.4,1.4)) +
+	theme(legend.position="none") +
+	coord_cartesian(ylim=c(-6,6), xlim=c(-6,6))
 
-p2 <- ggplot(data=polyR) + aes(x=halflife, y=rpl) +
-        geom_point(aes(colour=Condition)) +
+p2 <- ggplot(data=polyR) + aes(x=t_ratio_HL, y=fc_60) +
         theme_niwot() +
-        facet_wrap(~Condition, nrow=1) +
-	geom_smooth(method="lm") +
-        scale_y_continuous(name="Mean RPL", trans='log10') +
-        scale_x_continuous(name="Half-life (min)")
+        geom_point(aes(colour=loci, alpha=loci)) +
+        geom_smooth(method='lm', formula = y~x) +
+        scale_y_continuous(name = "Fold-change RPL", trans = "log10", breaks=c(0.1,1,10)) +
+        scale_x_continuous(name = "mRNA half-life ratio \n (HL : US)", trans = "log10") +
+        scale_colour_manual(values = c("black", "salmon")) +
+        scale_alpha_manual(values = c(0.4,1.4)) +
+	theme(legend.position="none") +
+	coord_cartesian(ylim=c(0.05,40))
 
-p1 / p2
+p3 <- ggplot(data=polyR) + aes(x=t_ratio_REC, y=fc_90) +
+        theme_niwot() +
+        geom_point(aes(colour=loci, alpha=loci)) +
+        geom_smooth(method='lm', formula = y~x) +
+        scale_y_continuous(name = "Fold-change RPL", trans = "log10", breaks=c(0.1,1,10)) +
+        scale_x_continuous(name = "mRNA half-life ratio \n (REC : HL)", trans = "log10") +
+        scale_colour_manual(values = c("black", "salmon")) +
+        scale_alpha_manual(values = c(0.4,1.4)) +
+        theme(legend.position="bottom")+
+        coord_cartesian(ylim=c(0.05,40))
+
+(p1 + p2) / (p3 + p3)
 
 dev.off()
 
-a <- subset(polyR, Condition == "NL")
+a <- subset(polyR, time == "t0")
 cor(x=a$halflife, y=a$poly, method="pearson")
 lm(formula = poly ~ halflife, data = a)
 cor(x=a$halflife, y=a$rpl, method="pearson")
 lm(formula = rpl ~ halflife, data = a)
 
-a <- subset(polyR, Condition == "EL")
+a <- subset(polyR, Condition == "t30")
 cor(x=a$halflife, y=a$poly, method="pearson")
 lm(formula = poly ~ halflife, data = a)
 cor(x=a$halflife, y=a$rpl, method="pearson")
 lm(formula = rpl ~ halflife, data = a)
 
-a <- subset(polyR, Condition == "Rec")
+a <- subset(polyR, Condition == "t60")
 cor(x=a$halflife, y=a$poly, method="pearson")
 lm(formula = poly ~ halflife, data = a)
 cor(x=a$halflife, y=a$rpl, method="pearson")
 lm(formula = rpl ~ halflife, data = a)
 
-
-
+a <- subset(polyR, Condition == "t90")
+cor(x=a$halflife, y=a$poly, method="pearson")
+lm(formula = poly ~ halflife, data = a)
+cor(x=a$halflife, y=a$rpl, method="pearson")
+lm(formula = rpl ~ halflife, data = a)
 
 
