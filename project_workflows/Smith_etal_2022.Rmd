@@ -1,5 +1,5 @@
 ---
-title: "Experiment 555 RNA half-lives under differing conditions"
+title: "mRNA fate dynamics during light stress and recovery"
 author: "Diep R Ganguly & Aaron B Smith"
 date: "20 Aug 2021"
 output: html_document
@@ -870,7 +870,7 @@ polyR <- dir("polysome_rna/") %>% tibble() %>%
 pdf("rpl_vs_halflife.pdf", paper='a4')
 p1 <- ggplot(data=polyR) + aes(x=log_half_HL, y=logfc_30, col = cat_30) +
 	theme_bw() +
-        geom_point(size=0.4) +
+        geom_point(size=0.2) +
         scale_y_continuous(name = "log2FC RPL", breaks=c(-5,0,5)) +
 	geom_hline(yintercept = c(log2(1.5),-log2(1.5)), linetype = 'dashed') +
         scale_x_continuous(name = "log2FC half-life ratio \n (HL : US)", breaks=c(-5,0,5)) +
@@ -881,7 +881,7 @@ p1 <- ggplot(data=polyR) + aes(x=log_half_HL, y=logfc_30, col = cat_30) +
 
 p2 <- ggplot(data=polyR) + aes(x=log_half_HL, y=logfc_60, col = cat_60) +
         theme_bw() +
-        geom_point(size=0.6) +
+        geom_point(size=0.2) +
         scale_y_continuous(name = "log2FC RPL", breaks=c(-5,0,5)) +
         scale_x_continuous(name = "log2FC half-life ratio \n (HL : US)", breaks=c(-5,0,5)) +
 	geom_vline(xintercept = c(log2(1.5),-log2(1.5)), linetype = 'dashed') +
@@ -892,7 +892,7 @@ p2 <- ggplot(data=polyR) + aes(x=log_half_HL, y=logfc_60, col = cat_60) +
 
 p3 <- ggplot(data=polyR) + aes(x=log_half_REC, y=logfc_90, col=cat_90) +
         theme_bw() +
-        geom_point(size=0.6) +
+        geom_point(size=0.2) +
         scale_y_continuous(name = "log2FC RPL", breaks=c(-5,0,5)) +
         scale_x_continuous(name = "log2FC half-life ratio \n (REC : HL)", breaks=c(-5,0,5)) +
 	geom_vline(xintercept = c(log2(1.5),-log2(1.5)), linetype = 'dashed') +
@@ -907,6 +907,17 @@ p4 <- ggplot() + geom_point()
 
 dev.off()
 
+## write out HL 30-60 genes that have increased RPL
+test_rpl <- subset(polyR, cat_60 == "g1")
+
+write_csv(test_rpl, "HL_60_RPLup.csv")
+
+## write out HL 30-60 genes that have increased RPL but no stability change
+test_rpl <- subset(polyR, cat_60 == "g1") %>%
+	select(ID, logfc_60, t_ratio_HL, log_half_HL, cat_60) %>%
+	subset(log_half_HL <= log(1.5) & log_half_HL >= -log(1.5))
+
+write_csv(test_rpl, "HL_60_prefRPLup.csv")
 
 
 
