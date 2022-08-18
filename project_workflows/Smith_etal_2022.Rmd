@@ -131,9 +131,9 @@ genes <- rownames(filtered)
 set1 <- RUVr(set, genes, k=1, res)
 
 ## RUVs normalization
-x <- interaction(metatable$Treatment,metatable$Timepoint,metatable$Condition)
-differences <- makeGroups(x)
-set2 <- RUVs(set, genes, k=1, differences)
+#x <- interaction(metatable$Treatment,metatable$Timepoint,metatable$Condition)
+#differences <- makeGroups(x)
+#set2 <- RUVs(set, genes, k=1, differences)
 
 ## colours
 clrs <- brewer.pal(6, "Set2")
@@ -769,6 +769,7 @@ fit <- glmQLFit(y2, design, robust=TRUE)
 
 my.contrasts <- makeContrasts(
 	mock_ELvsNL = Mock_10_EL - Mock_10_NL,
+	mock_RECvsEL = Mock_20_Rec - Mock_10_EL,
 	levels=design
 )
 
@@ -783,6 +784,9 @@ for(i in colnames(my.contrasts)){
   dge2 <- rbind(dge2,tt)
 }
 
+dge2_HL <- subset(dge2, contrast == "mock_ELvsNL")
+dge2_Rec <- subset(dge2, contrast == "mock_RECvsEL")
+
 rrgd <- read_csv("TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
   select(-c(3:6,33:ncol(.))) %>%
   clean_names %>% subset(rrgd_loci == "RRGD")
@@ -791,39 +795,63 @@ half_ratio <- out_all %>%
 	select(geneID, halflife, Condition) %>% 
 	spread(Condition, halflife) %>%
 	mutate(t_ratio_HL = EL/NL) %>%
-	mutate(t_ratio_REC = Rec/EL) %>%
-	mutate(logfc = dge2$logFC[match(geneID,dge2$ID)]) %>%
-	mutate(logcpm = dge2$logCPM[match(geneID,dge2$ID)]) %>%
-	mutate(fold_change = 2^logfc) %>%
+	mutate(t_ratio_Rec = Rec/EL) %>%
+	mutate(logfc_HL = dge2_HL$logFC[match(geneID,dge2_HL$ID)]) %>%
+	mutate(logfc_Rec = dge2_Rec$logFC[match(geneID,dge2_Rec$ID)]) %>%
+	mutate(logcpm_HL = dge2_HL$logCPM[match(geneID,dge2_HL$ID)]) %>%
+	mutate(logcpm_Rec = dge2_Rec$logCPM[match(geneID,dge2_Rec$ID)]) %>%
+	mutate(fold_change_HL = 2^logfc_HL) %>%
+	mutate(fold_change_Rec = 2^logfc_Rec) %>%
 	mutate(loci = rrgd$rrgd_loci[match(geneID, rrgd$locus_identifier)]) %>%
 	mutate(loci = ifelse(is.na(loci) == T, yes="non", no="RRGD")) %>%
 	mutate(loci = factor(loci, levels = c("non","RRGD")))
 
+half_ratio_rrgd <- subset(half_ratio, loci == "RRGD") %>%
+	dplyr::select(geneID, t_ratio_HL, t_ratio_Rec, fold_change_HL, fold_change_Rec) %>% gather(type, value, -geneID) %>%
+	mutate(condition = sapply(strsplit(type, "_"), function(l) l[3])) %>%
+	mutate(type = sapply(strsplit(type, "_"), function(l) paste(l[1],l[2],sep="_")))%>%
+	spread(type, value)
+
 pdf("mRNA-FC_vs_halflife-ratio.pdf")
-p1 <- ggplot(data=half_ratio) + aes(x=t_ratio_HL, y=fold_change) + 
+p1 <- ggplot(data=half_ratio) + aes(x=t_ratio_HL, y=fold_change_HL) + 
 	theme_niwot() +
 	geom_point(aes(colour=loci, alpha=loci)) +
 	geom_smooth(method='lm', formula = y~x) + 
 	scale_y_continuous(name = "mRNA relative abundance", trans = "log10") +
         scale_x_continuous(name = "mRNA half-life ratio", trans = "log10") +
 	scale_colour_manual(values = c("black", "salmon")) +
-	scale_alpha_manual(values = c(0.6,1.4))
+	scale_alpha_manual(values = c(0.6,1.4)) +
+	geom_vline(xintercept=1, col = 'red', linetype = 'dashed')
 
-p2 <- ggplot(data=half_ratio) + aes(x=logcpm, y=t_ratio_HL) + 
+p2 <- ggplot(data=half_ratio) + aes(x=logcpm_HL, y=t_ratio_HL) + 
 	theme_niwot() +
         geom_point() +
         scale_y_continuous(name = "mRNA half-life ratio") +
         scale_x_continuous(name = "mRNA abundance")
 
+p3 <- ggplot(data=half_ratio_rrgd) + aes(x=t_ratio, y=fold_change) +
+	facet_wrap(~condition) +
+       	theme_niwot() +
+        geom_point(col='salmon') +
+        scale_y_continuous(name = "mRNA relative abundance", trans = "log10") +
+       	scale_x_continuous(name = "mRNA half-life ratio", trans = "log10") +
+        geom_vline(xintercept=1, col='dodgerblue', linetype='dashed')+
+	geom_hline(yintercept=1, col='dodgerblue', linetype='dashed')
+
 p2
 
 p1
 
+p3
+
 dev.off()
 
-summary(lm(formula = fold_change ~ t_ratio_HL, data = half_ratio))
-cor(half_ratio$fold_change, half_ratio$t_ratio_HL)
-  subset(rrgd_loci == "RRGD")
+summary(lm(formula = fold_change_HL ~ t_ratio_HL, data = half_ratio))
+cor(half_ratio$fold_change_HL, half_ratio$t_ratio_HL)
+
+summary(lm(formula = fold_change_Rec ~ t_ratio_REC, data = half_ratio_rrgd))
+cor(half_ratio_rrgd$fold_change_Rec, half_ratio_rrgd$t_ratio_REC)
+
 
 ##################
 ## mRNA half-life vs translation (polysome-RNA abundance and RPL)
@@ -859,13 +887,13 @@ polyR <- dir("polysome_rna/") %>% tibble() %>%
 		ifelse(logfc_30 <= -log2(1.5), 'g2', 'g3'))) %>% 
 	mutate(cat_30 = ifelse(cat_30 != 'g3', cat_30, 
 		ifelse(log_half_HL>=log2(1.5),'g4', 
-			ifelse(log_half_HL <= -log(1.5),'g5','g6')))) %>%
+			ifelse(log_half_HL <= -log2(1.5),'g5','g6')))) %>%
 	mutate(cat_60 = ifelse(logfc_60 >= log2(1.5), 'g1',                                                       ifelse(logfc_60 <= -log2(1.5), 'g2', 'g3'))) %>%
         mutate(cat_60 = ifelse(cat_60 != 'g3', cat_60,
-                ifelse(log_half_HL>=log2(1.5),'g4',                                                                       ifelse(log_half_HL <= -log(1.5),'g5','g6')))) %>%
+                ifelse(log_half_HL>=log2(1.5),'g4',                                                                       ifelse(log_half_HL <= -log2(1.5),'g5','g6')))) %>%
 	mutate(cat_90 = ifelse(logfc_90 >= log2(1.5), 'g1',                                                       ifelse(logfc_90 <= -log2(1.5), 'g2', 'g3'))) %>%
         mutate(cat_90 = ifelse(cat_90 != 'g3', cat_90,
-                ifelse(log_half_REC>=log2(1.5),'g4',                                                                       ifelse(log_half_REC <= -log(1.5),'g5','g6'))))
+                ifelse(log_half_REC>=log2(1.5),'g4',                                                                       ifelse(log_half_REC <= -log2(1.5),'g5','g6'))))
 
 pdf("rpl_vs_halflife.pdf", paper='a4')
 p1 <- ggplot(data=polyR) + aes(x=log_half_HL, y=logfc_30, col = cat_30) +
@@ -907,17 +935,34 @@ p4 <- ggplot() + geom_point()
 
 dev.off()
 
-## write out HL 30-60 genes that have increased RPL
-test_rpl <- subset(polyR, cat_60 == "g1")
+## write out genes with increased RPL at 30-60 HL
+test_rpl <- subset(polyR, cat_60 == "g1") %>%
+	select(ID, logfc_60, t_ratio_HL, log_half_HL, cat_60) %>%
+	arrange(desc(log2fc_60))
+#subset(log_half_HL <= log(1.5) & log_half_HL >= -log(1.5)) ## no change in stability
 
 write_csv(test_rpl, "HL_60_RPLup.csv")
 
-## write out HL 30-60 genes that have increased RPL but no stability change
-test_rpl <- subset(polyR, cat_60 == "g1") %>%
-	select(ID, logfc_60, t_ratio_HL, log_half_HL, cat_60) %>%
-	subset(log_half_HL <= log(1.5) & log_half_HL >= -log(1.5))
+#### collate Poly and total RPKM
+polyR_rpkm <- dir("polysome_rna/") %>% tibble() %>%
+        mutate(file_contents = map(., ~read_csv(file.path("polysome_rna", .)))) %>%
+        unnest(cols=c(file_contents)) %>%
+        gather(sample, rpkm, -., -ID, -Length, na.rm = T) %>%
+        mutate(type = sapply(strsplit(sample, "_"), function(l) l[3])) %>%
+        mutate(time = sapply(strsplit(., "_"), function(l) l[3])) %>%
+        mutate(time = paste0('t',time)) %>%
+        mutate(sample=sapply(strsplit(sample, "_"), function(l) paste0(l[1],l[2]))) %>%
+        group_by(ID,type,time) %>% summarise(avg_rpkm = mean(rpkm)) %>%
+	mutate(sample = paste(type, time, sep="_")) %>%
+	ungroup() %>% dplyr::select(-type, -time) %>%
+        spread(sample, avg_rpkm)
 
-write_csv(test_rpl, "HL_60_prefRPLup.csv")
+## abundance filter: RPKM > 1 in >3 samples
+polyR_rpkm[is.na(polyR_rpkm)] <- 0
+keep <- rowSums(polyR_rpkm>1)>3
+polyR_rpkm <- polyR_rpkm[keep,]
+
+write_csv(polyR_rpkm, "Polysome_rpkm.csv")
 
 
 
