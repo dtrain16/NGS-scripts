@@ -792,7 +792,7 @@ dev.off()
 test <- dabest(.data = out_all, 
 	x = Condition,
         y = halflife,
-        idx = c("NL", "Rec"),
+        idx = c("NL", "EL", "Rec"),
         #idx = c("NL","EL"),
 	paired=TRUE, id.col = "geneID")
 
@@ -826,12 +826,11 @@ a <- select(out_all, geneID, Condition, halflife) %>%
         gather(group, halflife, -geneID, -NL) %>%
         mutate(diff = a1$diff[match(group, a1$test)]) %>%
         mutate(x = halflife - NL) %>%
-        mutate(test = ifelse(x < diff, yes = 1, no = 0)) %>%
-	subset(group == "Rec")
+        mutate(test = ifelse(x < diff, yes = -1, no = ifelse(x > 1, 1, 0)))
 
-a_venn <- select(a, geneID, group, test) %>% spread(group, test)
+a_venn <- subset(group == "EL") %>% select(a, geneID, group, test) %>% spread(group, test)
 
-subset(a_venn, EL == 1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
+subset(a_venn, EL == -1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
 
 ##################
 ## mRNA half-life vs mRNA fold-change
@@ -928,7 +927,6 @@ cor(half_ratio$fold_change_Rec, half_ratio$t_ratio_Rec)
 ##########################
 ## PCA polysome-seq
 #######################
-
 meta_poly <- dir("polysome_rna/") %>% tibble() %>%
         mutate(file_contents = map(., ~read_csv(file.path("polysome_rna", .)))) %>%
         unnest(cols=c(file_contents)) %>%
@@ -956,10 +954,11 @@ v1 <- calcNormFactors(v1, method = "TMM")
 
 poly_countFiles <- dir("../Exp566/poly_counts/")
 lbls <- sapply(strsplit(poly_countFiles, "_"), function(l) l[2])
+grps <- paste0("Sample",lbls)
 
-v2 <- readDGE(total_countFiles, columns = c(1,7),
-        labels=lbls, group=lbls,
-        path="../Exp566/total_counts/", skip=1)
+v2 <- readDGE(poly_countFiles, columns = c(1,7),
+        labels=lbls, group=grps,
+        path="../Exp566/poly_counts/", skip=1)
 v2$samples$time <- meta_poly$time[match(v2$samples$group, meta_poly$sample)]
 time <- v2$samples$time
 design <- model.matrix(~0 + time)
@@ -973,23 +972,38 @@ pdf("PCAplots_polysomeRNA.pdf")
 mds <- plotMDS(v1, ndim=3, plot=F, gene.selection = "pairwise")
 
 mds_df <- data.frame(Sample = colnames(mds$distance.matrix.squared),
-        x1 = as.numeric(mds$x),
-        y1 = as.numeric(mds$y)) %>%
+        x1 = as.numeric(mds$x), y1 = as.numeric(mds$y)) %>%
         mutate(Sample = paste0("Sample",Sample)) %>%
         mutate(time = meta_poly$time[match(Sample, meta_poly$sample)])
 
-ggplot(data = mds_df) +
+p1 <- ggplot(data = mds_df) +
         aes(x=x1, y=y1, colour=time) +
         geom_point() +
         ggtitle("Total RNA") +
-	scale_x_continuous(name = "Dim1") +
-        scale_y_continuous(name = "Dim2") +
-        theme_niwot()
+	scale_x_continuous(name = "Dim1", breaks = c(-1, 0, 1)) +
+        scale_y_continuous(name = "Dim2", breaks = c(-1, 0, 1)) +
+        theme_niwot() +
+	theme(legend.position="none")
 
+mds <- plotMDS(v2, ndim=3, plot=F, gene.selection = "pairwise")
 
+mds_df <- data.frame(Sample = colnames(mds$distance.matrix.squared),
+        x1 = as.numeric(mds$x), y1 = as.numeric(mds$y)) %>%
+        mutate(Sample = paste0("Sample",Sample)) %>%
+        mutate(time = meta_poly$time[match(Sample, meta_poly$sample)])
+
+p2 <- ggplot(data = mds_df) +
+        aes(x=x1, y=y1, colour=time) +
+        geom_point() +
+        ggtitle("Polysome RNA") +
+        scale_x_continuous(name = "Dim1", breaks = c(-1, 0, 1)) +
+        scale_y_continuous(name = "Dim2", breaks = c(-1, 0, 1)) +
+        theme_niwot() + 
+	theme(legend.position="none")
+
+p1 + p2 + p1 + p2 + theme(legend.position="bottom")
 
 dev.off()
-
 
 ##################
 ## mRNA half-life vs translation (polysome-RNA abundance and RPL)
