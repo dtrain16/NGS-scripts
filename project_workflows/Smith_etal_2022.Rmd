@@ -759,12 +759,12 @@ ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
 	scale_y_continuous(name="log2 half-life + 0.01 (min)") +
 	scale_x_discrete(name="Dataset") +
 	annotate("text", parse=TRUE,
-		x=c(test2$result$control_group[1], test2$result$test_group),
-		y=max(test2$data$log_halflife)*1.1,
-		label=paste0("theta=", round(c(0,test2$result$difference),2))) +
+		x=c(test3$result$control_group[1], test3$result$test_group),
+		y=max(test3$data$log_halflife)*1.05,
+		label=paste0("theta=", round(c(0,test3$result$difference),2))) +
 	annotate("text", parse=TRUE,
 		x=c(test1$result$control_group[1], test1$result$test_group), 
-		y=max(test1$data$log_halflife)*1.05,
+		y=max(test1$data$log_halflife)*1.1,
 		label=paste("delta",round(c(0,test1$result$difference),2), sep='='))
 dev.off()
 
@@ -780,6 +780,17 @@ a_venn <- select(a, geneID, group, test) %>% spread(group, test)
 
 a2 <- data.frame(geneID = a_venn$geneID, overlaps = rowSums(a_venn[2:5])) %>%
 	subset(overlaps > 2)
+
+a3 <- select(a2, geneID) %>% 
+	mutate(Smith = a$Smith[match(geneID, a$geneID)]) %>%
+	mutate(Narsai = b2$halflife[match(geneID, b2$geneID)]) %>%
+	mutate(Sorenson = b3$halflife[match(geneID, b3$geneID)]) %>%
+	mutate(Szabo = b4$halflife[match(geneID, b4$geneID)]) %>%
+	mutate(Chantarachot = b5$halflife[match(geneID, b5$geneID)]) %>%
+	mutate(symbol = anno$name[match(geneID, anno$ID)]) %>%
+	mutate(description = anno$description[match(geneID, anno$ID)])
+
+write_csv(a3, "Smith_US_low_halflife.csv")
 
 pdf("venn_Smith_low-halflife.pdf")
 vennDiagram(a_venn[2:5], mar=c(2,2,2,2), lwd=1, cex=1)
@@ -828,7 +839,7 @@ a <- select(out_all, geneID, Condition, halflife) %>%
         mutate(x = halflife - NL) %>%
         mutate(test = ifelse(x < diff, yes = -1, no = ifelse(x > 1, 1, 0)))
 
-a_venn <- subset(group == "EL") %>% select(a, geneID, group, test) %>% spread(group, test)
+a_venn <- subset(a, group == "EL") %>% select(geneID, group, test) %>% spread(group, test)
 
 subset(a_venn, EL == -1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
 
@@ -922,7 +933,6 @@ cor(half_ratio$fold_change_HL, half_ratio$t_ratio_HL)
 
 summary(lm(formula = fold_change_Rec ~ t_ratio_Rec, data = half_ratio))
 cor(half_ratio$fold_change_Rec, half_ratio$t_ratio_Rec)
-
 
 ##########################
 ## PCA polysome-seq
