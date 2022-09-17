@@ -398,26 +398,6 @@ write_csv(dge_out, "cordycepin_dge.csv")
 
 
 pdf("PCAplots_cordycepin_RNA.pdf")
-#pcomp1 <- prcomp(t(as.matrix(gene_tpm[keep,])), center = T, scale. = T)
-#pcomp2 <- prcomp(t(cpm(normCounts(set1))), center=T, scale. = T)
-
-#fviz_pca_ind(pcomp1, repel = T, label="none", title="TPM",
-#        habillage=interaction(metatable$Treatment,metatable$Condition),
-#       xlim=c(-200,200), ylim=c(-200,200),
-#        addEllipses=TRUE, ellipse.type = "confidence")
-
-#fviz_pca_ind(pcomp2, repel = T, label="none",
-#        habillage=interaction(pData(set1)$Treatment,pData(set1)$Condition),
-#        pointsize=1.5, invisible="quali", addEllipses=F, ellipse.type = "confidence")
-
-#my_grps1 <- pData(set1) %>% subset(Treatment == "Cordycepin") %>%
-#        mutate(group = paste(Condition, Timepoint, sep='_')) %>%
-#        dplyr::select(Condition, Timepoint, Experiment) %>%
-#        mutate(Experiment = as.factor(Experiment))
-
-#cor_matrix <- cor(test1, method="pearson")
-#pheatmap(cor_matrix, annotation_col = my_grps1, scale="none", cluster_cols=T,
-#        cluster_rows=T, show_colnames=F, show_rownames=F, fontsize=6)
 
 mds <- plotMDS(y2, ndim=3, plot=F, gene.selection = "pairwise")
 
@@ -439,14 +419,6 @@ dev.off()
 
 
 pdf("DGE_testing.pdf")
-
-#ggplot(data = dge) + aes(x=logFC, y=-liog10(FDR), group=contrast, colour=DGE) +
-#  geom_jitter(size=0.8) + theme_niwot() + facet_wrap(~contrast) +
-#  geom_hline(yintercept = -log10(0.05), linetype='dashed', col='salmon', alpha=0.5) +
-#  geom_vline(xintercept = 0, linetype='dashed', col='darkgrey', alpha=0.5) +
-#  scale_x_continuous(name = "log2 fold-change", limits = c(-8,8)) +
-#  scale_y_continuous(name = "-log10 p-value") +
-#  scale_colour_manual(values = c('Down-regulated'="royalblue","Non-DGE"="lightgrey","Up-regulated"="khaki1"))
 
 ggplot(data=subset(dge, DGE != "Non-DGE")) + aes(x=logCPM, y=logFC, group=contrast, colour=DGE) +
   geom_jitter(size=0.8) +
@@ -582,39 +554,40 @@ my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum, -Experiment, -Tre
         column_to_rownames("Sample") %>%
         mutate(Timepoint = as.factor(paste(Timepoint)))
 
-heatmap_input <- group_by(normData_NL, ID, Timepoint, Condition) %>%
-        summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
-        mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
-        na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
-        spread(Sample, rel_cpm) %>% column_to_rownames('ID')
-
-pheatmap(as.matrix(heatmap_input),
-        cluster_cols=F,
-        annotation_col = my_grps,
-	filename = "heatmap_normalized_fractional_NL.pdf",
-        scale = "none",
-        angle_col = 90,
-        show_rownames = F,
-        show_colnames = F,
-        fontsize = 6
-)
-
 heatmap_input <- group_by(normData, ID, Timepoint, Condition) %>%
         summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
         mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
         na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
         spread(Sample, rel_cpm) %>% column_to_rownames('ID')
 
-pheatmap(as.matrix(heatmap_input),
+heatmap_input <- as.matrix(heatmap_input)
+
+rowDistance = dist(heatmap_input, method = "euclidean")
+rowCluster = hclust(rowDistance, method = "complete")
+
+hmap <- pheatmap(heatmap_input,
         annotation_col = my_grps,
-        cluster_cols=F,
+        cluster_rows=rowCluster,
+	cluster_cols=F,
         filename = "heatmap_normalized_fractional_all.pdf",
         scale = "none",
         angle_col = 90,
+	cutree_rows = 4,
         show_rownames = F,
         show_colnames = F,
         fontsize = 6
 )
+
+hmap_rows <- cutree(rowCluster, 4)
+hmap_rows <- as.data.frame(hmap_rows[hmap$tree_row$order])
+colnames(hmap_rows) <- "decay_cat"
+
+out_all_decay <- mutate(out_all, decay_category = hmap_rows$decay_cat[match(geneID, rownames(hmap_rows))]) %>% 
+	arrange(match(geneID, rownames(hmap_rows))) %>% 
+	select(-log_halflife, -aic) %>% 
+	mutate(RRGD = ifelse(geneID %in% rrgd$locus_identifier == T, yes = 1, no=0))
+
+write_csv(out_all_decay, "allconditions_halflife.csv")
 
 ###############################
 ## decay profile of sample genes
@@ -841,8 +814,6 @@ a <- select(out_all, geneID, Condition, halflife) %>%
 
 a_venn <- subset(a, group == "EL") %>% select(geneID, group, test) %>% spread(group, test)
 
-subset(a_venn, EL == -1) %>% select(geneID)%>% write_csv("Smith_EL_low_halflife.csv")
-
 ##################
 ## mRNA half-life vs mRNA fold-change
 #################
@@ -852,6 +823,7 @@ fit <- glmQLFit(y2, design, robust=TRUE)
 my.contrasts <- makeContrasts(
 	mock_ELvsNL = Mock_10_EL - Mock_10_NL,
 	mock_RECvsEL = Mock_20_Rec - Mock_10_EL,
+	mock_RECvsNL = Mock_20_Rec - Mock_10_NL,
 	levels=design
 )
 
@@ -868,6 +840,7 @@ for(i in colnames(my.contrasts)){
 
 dge2_HL <- subset(dge2, contrast == "mock_ELvsNL")
 dge2_Rec <- subset(dge2, contrast == "mock_RECvsEL")
+dge2_Rec_US <- subset(dge2, contrast == "mock_RECvsNL")
 
 rrgd <- read_csv("TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
   select(-c(3:6,33:ncol(.))) %>%
@@ -878,21 +851,30 @@ half_ratio <- out_all %>%
 	spread(Condition, halflife) %>%
 	mutate(t_ratio_HL = EL/NL) %>%
 	mutate(t_ratio_Rec = Rec/EL) %>%
+	mutate(t_ratio_Rec_US = Rec/NL) %>%
 	mutate(logfc_HL = dge2_HL$logFC[match(geneID,dge2_HL$ID)]) %>%
 	mutate(logfc_Rec = dge2_Rec$logFC[match(geneID,dge2_Rec$ID)]) %>%
+	mutate(logfc_Rec_US = dge2_Rec_US$logFC[match(geneID,dge2_Rec$ID)]) %>%
 	mutate(logcpm_HL = dge2_HL$logCPM[match(geneID,dge2_HL$ID)]) %>%
 	mutate(logcpm_Rec = dge2_Rec$logCPM[match(geneID,dge2_Rec$ID)]) %>%
 	mutate(fold_change_HL = 2^logfc_HL) %>%
 	mutate(fold_change_Rec = 2^logfc_Rec) %>%
+	mutate(fold_change_Rec_US = 2^logfc_Rec_US) %>%
 	mutate(loci = rrgd$rrgd_loci[match(geneID, rrgd$locus_identifier)]) %>%
 	mutate(loci = ifelse(is.na(loci) == T, yes="non", no="RRGD")) %>%
 	mutate(loci = factor(loci, levels = c("non","RRGD")))
 
-half_ratio_rrgd <- subset(half_ratio, loci == "RRGD") %>%
-	dplyr::select(geneID, t_ratio_HL, t_ratio_Rec, fold_change_HL, fold_change_Rec) %>% gather(type, value, -geneID) %>%
-	mutate(condition = sapply(strsplit(type, "_"), function(l) l[3])) %>%
-	mutate(type = sapply(strsplit(type, "_"), function(l) paste(l[1],l[2],sep="_")))%>%
-	spread(type, value)
+out_stab <- select(half_ratio, -NL, -EL, -Rec) %>% subset(t_ratio_HL > 1)
+
+write_csv(out_stab, "Smith_EL_high_halflife.csv")
+
+out <- select(half_ratio, geneID, logcpm_HL, t_ratio_HL, fold_changeo_HL, logcpm_Rec, t_ratio_Rec, fold_change_Rec, loci) %>%
+	mutate(test = a_venn$EL[match(geneID, a_venn$geneID)]) %>%
+	subset(test == -1) %>%
+	mutate(symbol = anno$name[match(geneID, anno$ID)]) %>%
+	mutate(description = anno$description[match(geneID, anno$ID)])
+
+select(out, -test)%>% write_csv("Smith_EL_low_halflife.csv")
 
 pdf("mRNA-FC_vs_halflife-ratio.pdf")
 p1 <- ggplot(data=half_ratio) + aes(x=t_ratio_HL, y=fold_change_HL) + 
@@ -920,11 +902,22 @@ p3 <- ggplot() +
        	scale_x_continuous(name = "mRNA half-life ratio", trans = "log10") +
         geom_vline(xintercept=1, col = 'red', linetype = 'dashed')
 
+p4 <- ggplot() +
+        theme_niwot() +
+        geom_point(data=subset(half_ratio, loci == "non"), colour='black', alpha=0.6, mapping=aes(x=t_ratio_Rec_US, y=fold_change_Rec_US)) +
+        geom_point(data=subset(half_ratio, loci == "RRGD"), colour='salmon', alpha=1.6,  mapping=aes(x=t_ratio_Rec_US, y=fold_change_Rec_US)) +
+        geom_smooth(data = half_ratio, mapping = aes(x=t_ratio_Rec_US, y=fold_change_Rec_US), method='lm', formula = y~x) +
+        scale_y_continuous(name = "mRNA relative abundance", trans = "log10") +
+        scale_x_continuous(name = "mRNA half-life ratio", trans = "log10") +
+        geom_vline(xintercept=1, col = 'red', linetype = 'dashed')
+
 p2
 
 p1
 
 p3
+
+p4
 
 dev.off()
 
