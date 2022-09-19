@@ -589,6 +589,14 @@ out_all_decay <- mutate(out_all, decay_category = hmap_rows$decay_cat[match(gene
 
 write_csv(out_all_decay, "allconditions_halflife.csv")
 
+subset(out_all_decay, decay_category == 3) %>% select(geneID) %>% unique() %>% write_csv("slow_decay_genes.csv")
+
+subset(out_all_decay, decay_category == 2) %>% select(geneID) %>% unique() %>% write_csv("moderate_decay_genes.csv")
+
+subset(out_all_decay, decay_category == 4) %>% select(geneID) %>% unique() %>% write_csv("rapid_decay_genes.csv")
+
+subset(out_all_decay, decay_category == 1) %>% select(geneID) %>% unique() %>% write_csv("fast_decay_genes.csv")
+
 ###############################
 ## decay profile of sample genes
 ##############################
