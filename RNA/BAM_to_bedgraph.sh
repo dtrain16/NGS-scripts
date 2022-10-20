@@ -2,16 +2,18 @@
 set -e 
 set -u
 
-# Produce coverage data from BAM files for RNAseq or ChIP data in bedgraph format
+# Produce coverage data from BAM files for RNA-seq or ChIP data in bedgraph format
 # Then produce bigWigs files for viewing delight
 # Run in directory with sam converted, sorted, indexed  bam file
-# Ensure subread indexed genome & chromosome sizes are prepared eg TAIR10/TAIR10_Chr.all.fasta.len
+# Ensure genome index genome & chromosome sizes are prepared:
 # samtools faidx TAIR10_Chr.all.fasta | cut -f1,2 TAIR10_Chr.all.fasta.fai > TAIR10_Chr.all.fasta.len
+# Make sure you have kentUtils: https://github.com/ENCODE-DCC/kentUtils
+# git clone git://github.com/ENCODE-DCC/kentUtils.git
 
 if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
-echo "USAGE: RNAseq_bam_to_bedgraph.sh <sample> <SE, PE> <unstranded, stranded, rev_stranded> <chr_sizes>"
-echo "EXAMPLE: RNAseq_bam_to_bedgraph.sh col0-r1.bam PE unstranded TAIR10_Chr.all.fasta.len"
+echo "USAGE: BAM_to_bedgraph.sh <sample> <SE, PE> <unstranded, stranded, rev_stranded> <chr_sizes>"
+echo "EXAMPLE: BAM_to_bedgraph.sh col0-r1.bam PE unstranded TAIR10_Chr.all.fasta.len"
 exit 1
 fi
 
@@ -19,9 +21,6 @@ smp=$1
 lay=$2
 str=$3
 chrc_sizes=$4
-
-# file for length of all 7 chromosomes
-# chrc_sizes=$HOME/TAIR10/TAIR10_Chr.all.fasta.len
 
 echo ""
 echo "sample = $1"
