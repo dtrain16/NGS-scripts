@@ -9,14 +9,13 @@ set -eu
 # chromosome lengths
 # cut -f1,2 Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.fai > Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.len
 # Build genome index
-# STAR --runThreadN 4 --runMode genomeGenerate --sjdbGTFfile Arabidopsis_thaliana.TAIR10.54.gtf --genomeFastaFiles Arabidopsis_thaliana.TAIR10.dna.toplevel.fa
+# STAR --runThreadN 4 --runMode genomeGenerate --genomeSAindexNbases 12 --sjdbGTFfile Arabidopsis_thaliana.TAIR10.54.gtf --genomeDir /path/to/GenomeDir/ --genomeFastaFiles Arabidopsis_thaliana.TAIR10.dna.toplevel.fa
 
-
-### Ensure CONDA environment is installed
+### CONDA environment is installed
 # conda create --name STAR_v1
 # conda install -n STAR_v1 -c bioconda fastqc
 # conda install -n STAR_v1 -c bioconda star
-# conda install -c grst trim_galore ## outdated version, install manually
+# conda install -n STAR_v1 -c grst trim_galore ## outdated version, install manually
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
@@ -24,8 +23,6 @@ echo "USAGE: STAR_pipe_v1.sh <SE/PE> <fastq R1> <R2> </path/to/index> <fileID>"
 echo "EXAMPLE: STAR_pipe_v1.sh SE sample.fastq /home/dganguly/ref_seqs/STAR/ sample_rep1"
 exit 1
 fi
-
-source activate STAR_v1
 
 ###
 # SINGLE END
@@ -89,14 +86,13 @@ STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesI
 
 echo "cleaning..."
 
-tmpbam="${fileID}.bam"
-outbam="${fileID}.sorted.bam"
-samtools sort -m 2G ${tmpbam} -o $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+outbam="${fileID}*.sortedByCoord.out.bam"
 samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-rm -v ${tmpbam}
 mv *trimmed.fq.gz ../2_read_trimming/
 
 echo "Alignment complete"
+
+fi
 
 ####
 # PAIRED END
@@ -171,6 +167,4 @@ mv *_val_2.fq.gz ../2_read_trimming/
 echo "Alignment complete"
 
 fi
-
-conda deactivate
 

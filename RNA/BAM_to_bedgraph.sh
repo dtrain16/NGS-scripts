@@ -1,6 +1,5 @@
 #!/bin/bash
-set -e 
-set -u
+set -eu
 
 # Produce coverage data from BAM files for RNA-seq or ChIP data in bedgraph format
 # Then produce bigWigs files for viewing delight
@@ -9,6 +8,10 @@ set -u
 # samtools faidx TAIR10_Chr.all.fasta | cut -f1,2 TAIR10_Chr.all.fasta.fai > TAIR10_Chr.all.fasta.len
 # Make sure you have kentUtils: https://github.com/ENCODE-DCC/kentUtils
 # git clone git://github.com/ENCODE-DCC/kentUtils.git
+
+### CONDA environment is installed
+# conda create --name Bedtools
+# conda install -n Bedtools -c bioconda bedtools
 
 if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
@@ -84,6 +87,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
+	
 	rm ${smp%%.bam}*forward*bam -v
 	rm ${smp%%.bam}*reverse*bam -v
 
