@@ -188,5 +188,3 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 
 fi
 
-# clean up tmps
-rm ${smp%%.sorted.bam}*bg -v
