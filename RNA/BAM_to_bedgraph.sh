@@ -42,7 +42,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
 	# bg to bigWig
 	echo "bigWig ..."
-	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
+	/home/dganguly/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
 fi
 
