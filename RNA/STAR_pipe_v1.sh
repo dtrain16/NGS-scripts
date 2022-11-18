@@ -12,11 +12,11 @@ set -eu
 # STAR --runThreadN 4 --runMode genomeGenerate --genomeSAindexNbases 12 --sjdbGTFfile Arabidopsis_thaliana.TAIR10.54.gtf --genomeDir /path/to/GenomeDir/ --genomeFastaFiles Arabidopsis_thaliana.TAIR10.dna.toplevel.fa
 
 ### CONDA environment is installed
-# conda create --name STAR_v1
-# conda install -n STAR_v1 -c bioconda fastqc
-# conda install -n STAR_v1 -c bioconda star
-# conda install -n STAR_v1 -c grst trim_galore ## outdated version, install manually
-# conda install -n STAR_v1 -c bioconda bedtools
+# conda create --name <name>
+# conda install -n <name> -c bioconda fastqc
+# conda install -n <name> -c bioconda star
+# conda install -n <name> -c grst trim_galore ## outdated version, install manually
+# conda install -n <name> -c bioconda bedtools
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
@@ -63,7 +63,8 @@ cd ${fileID}_star_${dow}
 # initial fastqc
 mkdir 1_fastqc
 fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
-mv ${fq%%.fastq*}_fastqc* 1_fastqc
+
+if [[ $fq == *"fq.gz" ]]; then mv ${fq%%.fq*}_fastqc* 1_fastqc; else mv ${fq%%.fastq*}_fastqc* 1_fastqc; fi
 
 echo "Read trimming... "
 
@@ -78,16 +79,21 @@ mv $fq 0_fastq
 
 # read alignment
 mkdir 3_align
-mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq* -t 3_align/
+
+if [[ $fq == *"fq.gz" ]]; then mv 2_read_trimming/${fq%%.fq*}_trimmed.fq* -t 3_align/; else
+	mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq* -t 3_align/;fi
+
 cd 3_align
 
 echo "Beginning alignment ..."
 
-STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fq%%.fastq*}_trimmed.fq* --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
+
+STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
-outbam="${fileID}.sortedByCoord.out.bam"
+outbam="${fileID}*.sortedByCoord.out.bam"
 samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 mv *trimmed.fq.gz ../2_read_trimming/
 
@@ -136,8 +142,9 @@ cd ${fileID}_star_${dow}
 # initial fastqc
 mkdir 1_fastqc
 fastqc -t 8 $fq1 $fq2 2>&1 | tee -a ${fileID}_logs_${dow}.log
-mv ${fq1%%.fastq*}_fastqc* 1_fastqc
-mv ${fq2%%.fastq*}_fastqc* 1_fastqc
+
+if [[ $fq1 == *"fq.gz" ]]; then mv ${fq1%%.fq*}_fastqc* 1_fastqc; else mv ${fq1%%.fastq*}_fastqc* 1_fastqc; fi
+if [[ $fq2 == *"fq.gz" ]]; then mv ${fq2%%.fq*}_fastqc* 1_fastqc; else mv ${fq2%%.fastq*}_fastqc* 1_fastqc; fi
 
 echo ""
 echo "Performing adapter and low-quality read trimming... "
@@ -155,14 +162,23 @@ mv $fq2 0_fastq
 
 # STAR align
 mkdir 3_align
-mv 2_read_trimming/${fq1%%.fastq*}_val_1.fq* -t 3_align/
-mv 2_read_trimming//${fq2%%.fastq*}_val_2.fq* -t 3_align/
+
+if [[ $fq1 == *"fq.gz" ]]; then mv 2_read_trimming/${fq1%%.fq*}_val_1.fq* -t 3_align/; else
+        mv 2_read_trimming/${fq1%%.fastq*}_val_1.fq* -t 3_align/; fi
+
+if [[ $fq2 == *"fq.gz" ]]; then mv 2_read_trimming//${fq2%%.fq*}_val_2.fq* -t 3_align/; else
+	mv 2_read_trimming/${fq2%%.fastq*}_val_2.fq* -t 3_align/; fi
+
+
 cd 3_align/
 
 # subjunc read alignment
 STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fq1%%.fastq*}_val_1.fq*, ${fq2%%.fastq*}_val_2.fq* --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
+
+outbam="${fileID}*.sortedByCoord.out.bam"
+samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 mv *_val_1.fq.gz ../2_read_trimming/
 mv *_val_2.fq.gz ../2_read_trimming/
