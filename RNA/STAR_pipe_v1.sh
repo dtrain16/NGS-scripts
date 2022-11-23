@@ -97,8 +97,6 @@ outbam="${fileID}*.sortedByCoord.out.bam"
 samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 mv *trimmed.fq.gz ../2_read_trimming/
 
-bamToBed -i $outbam > ${outbam%%.out*}.bed
-
 echo "Alignment complete"
 
 fi
@@ -182,8 +180,6 @@ samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 mv *_val_1.fq.gz ../2_read_trimming/
 mv *_val_2.fq.gz ../2_read_trimming/
-
-bamToBed -i $outbam > ${outbam%%.sorted*}.bed
 
 echo "Alignment complete"
 
