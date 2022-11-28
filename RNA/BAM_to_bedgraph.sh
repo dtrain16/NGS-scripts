@@ -51,9 +51,9 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# extract reads from + and - strand
 	
 	# reverse strand
-	samtools view -f 16 -b $smp > ${smp%%bam}reverse.bam
+	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
 	# forward strand
-	samtools view -F 16 -b $smp > ${smp%%bam}forward.bam
+	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
 	echo "BAM to stranded bedgraphs ..."
 	# reverse/minus bg
 	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
@@ -75,9 +75,9 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# extract reads from + and - strand
 
 	# reverse strand
-	samtools view -f 16 -b $smp > ${smp%%bam}reverse.bam
+	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
 	# forward strand
-	samtools view -F 16 -b $smp > ${smp%%bam}forward.bam
+	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
 	echo "BAM to stranded bedgraphs ..."
 	# reverse/plus bg
 	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
@@ -121,16 +121,16 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
-	samtools view -f 99 -b $smp > ${smp%%bam}R1F.bam
+	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
 	# R2 reverse
-	samtools view -f 147 -b $smp > ${smp%%bam}R2R.bam
+	samtools view -@ 2 -f 147 -b $smp > ${smp%%bam}R2R.bam
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
 	# R1 reverse
-	samtools view -f 83 -b $smp > ${smp%%bam}R1R.bam
+	samtools view -@ 2 -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
-	samtools view -f 163 -b $smp > ${smp%%bam}R2F.bam
+	samtools view -@ 2 -f 163 -b $smp > ${smp%%bam}R2F.bam
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 
@@ -159,16 +159,16 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
-	samtools view -f 99 -b $smp > ${smp%%bam}R1F.bam
+	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
 	# R2 reverse
-	samtools view -f 147 -b $smp > ${smp%%bam}R2R.bam
+	samtools view -@ 2 -f 147 -b $smp > ${smp%%bam}R2R.bam
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
 	# R1 reverse
-	samtools view -f 83 -b $smp > ${smp%%bam}R1R.bam
+	samtools view -@ 2 -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
-	samtools view -f 163 -b $smp > ${smp%%bam}R2F.bam
+	samtools view -@ 2 -f 163 -b $smp > ${smp%%bam}R2F.bam
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 
