@@ -55,7 +55,17 @@ macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}minus.bam -t ${ip%%bam}min
 
 echo "cleanup"
 
-rm ${input%%bam}plus.bam ${input%%bam}minus.bam $ip > ${ip%%bam}minus.bam $ip > ${ip%%bam}plus.bam -v
+rm ${input%%bam}plus.bam ${input%%bam}minus.bam ${ip%%bam}plus.bam ${ip%%bam}minus.bam -v
+
+echo "making bedfile of peaks" 
+
+## generate bedfile with strand information using .narrowpeak
+awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_minus_peaks.narrowPeak > ${out}_minus_peaks.stranded.bed
+
+awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
+
+## merge and sort by coordinate
+cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &
 
 fi
 
@@ -76,16 +86,25 @@ samtools view -@ 4 -f 16 -b $ip > ${ip%%bam}plus.bam
 
 echo "Peak calling"
 
-macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}plus.bam -t ${ip%%bam}plus.bam -f BAM -g 32542107 -n ${out}_plus.MACS -q 1e-2
+macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}plus.bam -t ${ip%%bam}plus.bam -f BAM -g 32542107 -n ${out}_plus -q 1e-2
 
-macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}minus.bam -t ${ip%%bam}minus.bam -f BAM -g 32542107 -n ${out}_minus.MACS -q 1e-2
+macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}minus.bam -t ${ip%%bam}minus.bam -f BAM -g 32542107 -n ${out}_minus -q 1e-2
 
 echo "cleanup"
 
-rm ${input%%bam}plus.bam ${input%%bam}minus.bam $ip > ${ip%%bam}minus.bam $ip > ${ip%%bam}plus.bam -v
+rm ${input%%bam}plus.bam ${input%%bam}minus.bam ${ip%%bam}plus.bam ${ip%%bam}minus.bam -v
+
+echo "making bedfile of peaks"
+
+## generate bedfile with strand information using .narrowpeak
+awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_minus_peaks.narrowPeak > ${out}_minus_peaks.stranded.bed  
+
+awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
+
+## merge and sort by coordinate
+cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &
 
 fi
-
 
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "un" ]] ; then
