@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
-# Run on output of RNAseq_bam_to_100bpwigs
+# Run on output of BAM_to_wigs.sh
 
 options(echo=T)
 library(fields)
@@ -11,7 +11,7 @@ print(args)
 input=read.delim(args[1],head=F)
 
 # Remove plastids and unmatched rows
-input=subset(input,input$V1!='ChrM' & input$V1!='ChrC')
+input=subset(input,input$V1!='ChrM' & input$V1!='ChrC' & input$V1 != 'Mt' & input$V1 != 'Pt')
 input=subset(input,input[,ncol(input)] != -1)
 
 # calculate normalized distance values for reads relative to feature
