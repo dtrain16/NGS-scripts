@@ -21,7 +21,7 @@ fixy=ifelse(input$rel.dist < 0 & input$V14==0,0,ifelse(input$rel.dist >1000 & in
 input$rel.dist=fixy
 
 # bin read depth by distance
-exp.bin=stats.bin(input$rel.dist,input$V4,N=100)
+exp.bin=stats.bin(input$rel.dist,input$V4,N=300)
 p.bin=cbind(matrix(exp.bin$centers,ncol=1),exp.bin$stats["mean",])
 out=cbind(p.bin)
 name <- sapply(strsplit(as.character(args[1]),'_'), function(l) l[1])
