@@ -7,8 +7,8 @@ set -eu
 
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
-echo "USAGE: RNAseq_bam_to_100bpwigs.sh <sorted bam> <genome fasta> <annotation> <out> <window length>"
-echo "EXAMPLE: RNAseq_bam_to_100bpwigs.sh col0-r1.sorted.bam /home/diep/TAIR10/TAIR10_Chr.all.fasta /home/diep/Araport11/annotations/Araport11_TE.bed TE 100"
+echo "USAGE: BAM_to_wigs.sh <.BAM> <genome fasta> <bedfile annotation> <feature name> <window size>"
+echo "EXAMPLE: BAM_tow_wigs.sh col0_rep1.sorted.bam TAIR10_Chr.all.fasta Araport11_TE.bed TE 100"
 exit 1
 fi
 
