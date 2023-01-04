@@ -101,7 +101,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
 	closestBed -D "b" -a ${smp%%bam}.minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
         awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.minus.bed
-
+	
 fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
