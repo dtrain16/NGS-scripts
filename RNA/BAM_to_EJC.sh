@@ -66,7 +66,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "forward" ]] ; then
 	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}.minus.bed
 	closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
 	awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.minus.bed
 	
 	# plus strand
 	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${bam%%bam}.plus.bed
@@ -94,7 +94,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
 	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bed*}_${out}.plus.bed
         awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.50bp.plus.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.plus.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.plus.bed
 
 	# minus strand
 	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
