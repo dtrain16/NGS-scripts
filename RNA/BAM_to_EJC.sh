@@ -8,6 +8,7 @@ set -eu
 # conda create --name ngs_plots
 # conda install -n ngs_plots -c bioconda bedtools
 # conda install -n ngs_plots r-fields
+# conda activate ngs_plots
 
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
@@ -32,8 +33,6 @@ echo "bedfile = $4"
 echo "feature = $5"
 echo ""
 
-conda activate ngs_plots
-
 if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then 
 
 	echo "BAM to bed..."
@@ -42,10 +41,10 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	echo 'bedtools for coverage across exons...'
 	closestBed -D "b" -a ${smp%%.bam*}.bed -b $bedfile > ${smp%%.bed*}_${out}.bed
 
-	echo 'subset to + 50bp / -50 bp ...'
+	echo 'subset to + 51 bp / -51 bp ...'
 	awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.50bp.bed
 
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.bed
 
 	echo 'cleaning'
 	rm -v ${smp%%.bam*}.bed ${smp%%.bed*}_${out}.bed
@@ -66,14 +65,14 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "forward" ]] ; then
 	# minus strand
 	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}.minus.bed
 	closestBed -D "b" -a ${smp%%bam}.minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
-	awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
+	awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.minus.bed
 	
 	# plus strand
 	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${bam%%bam}.plus.bed
 	closestBed -D "b" -a ${smp%%bam}.plus.bed -b $bedfile > ${smp%%.bed*}_${out}.plus.bed
-        awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.50bp.plus.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.plus.bed
+        awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.50bp.plus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.plus.bed
 	
 	echo "Cleaning"
 	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}.minus.bed ${smp%%.bed*}_${out}.minus.bed ${bam%%bam}.plus.bed ${smp%%.bed*}_${out}.plus.bed
@@ -94,14 +93,14 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
 	# plus strand
 	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}.plus.bed -b $bedfile > ${smp%%.bed*}_${out}.plus.bed
-        awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.50bp.plus.bed
+        awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.50bp.plus.bed
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.plus.bed
 
 	# minus strand
 	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
 	closestBed -D "b" -a ${smp%%bam}.minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
-        awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.minus.bed
+        awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.50bp.minus.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bed*}_${out}.50bp.minus.bed
 
 fi
 
@@ -116,7 +115,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
         closestBed -D "b" -a ${smp%%.bam*}.bed -b $bedfile > ${smp%%.bed*}_${out}.bed
 
         echo 'subset to + 50bp / -50 bp ...'
-        awk -F$'\t' '$NF<50 && $NF>-50' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.50bp.bed
+        awk -F$'\t' '$NF<51 && $NF>-51' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.50bp.bed
 
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.50bp.bed
 
@@ -191,5 +190,4 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "reverse" ]] ; then
 
 fi
 
-conda deactivate
 
