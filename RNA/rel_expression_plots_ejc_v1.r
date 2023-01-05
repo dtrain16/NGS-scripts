@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
 # Run on output of BAM_to_wigs.sh
+# Compute coverage across exons as a percentage of total exon length (classic mode)
 
 options(echo=T)
 library(fields)
@@ -27,6 +28,8 @@ out=cbind(p.bin)
 name <- sapply(strsplit(as.character(args[1]),'_'), function(l) l[1])
 colnames(out)=c('pos',paste(name))
 name2 <- sapply(strsplit(args[1], '\\.'), function(l) l[1])
-write.table(out,paste(name2,'values.txt',sep=''),sep='\t', quote=F, row.names=F)
+name3 <- sapply(strsplit(args[1], '_'), function(l) l[3])
+name3 <- gsub(".bed",".values.txt",name3)
+write.table(out,paste(name2,name3,sep='.'),sep='\t', quote=F, row.names=F)
 
 
