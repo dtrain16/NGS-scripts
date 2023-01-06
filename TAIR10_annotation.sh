@@ -62,10 +62,16 @@ exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
         mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
 	mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
-	subset(Isoform==1) %>%
+	subset(Isoform==1) %>% ## subset for primary transcript isoform
         select(c('seqname','start','end','Name','score','strand'))
 
 write.table(exon,'Arabidopsis_thaliana.TAIR10.54_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+exon1 <- mutate(exon, test = sapply(strsplit(Name, "\\."), function(l) l[3])) %>%
+	subset(test == "exon1") %>%
+	select(-test)
+
+write.table(exon1,'Arabidopsis_thaliana.TAIR10.54_exon1.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
