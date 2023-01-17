@@ -15,8 +15,8 @@ set -eu
 # conda create --name <name>
 # conda install -n <name> -c bioconda fastqc
 # conda install -n <name> -c bioconda star
-# conda install -n <name> -c grst trim_galore ## outdated version, install manually
 # conda install -n <name> -c bioconda bedtools
+# conda install -c bioconda fastx_toolkit
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
