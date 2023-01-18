@@ -1,10 +1,11 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
 # Run on output of BAM_to_wigs.sh
-# Computes distance relative to 3' end of exon
+# Computes normalized 5'P read frequency across full exon length
 
 options(echo=T)
 library(fields)
+library(tidyverse)
 args=commandArgs(trailingOnly=T)
 print(args)
 
@@ -12,8 +13,18 @@ print(args)
 input=read.delim(args[1],head=F)
 
 # Remove plastids and unmatched rows
-input=subset(input,input$V1!='ChrM' & input$V1!='ChrC' & input$V1 != 'Mt' & input$V1 != 'Pt')
-input=subset(input,input[,ncol(input)] != -1)
+input <- subset(input,V1!='ChrM' & V1!='ChrC' & V1 != 'Mt' & V1 != 'Pt')
+input <- subset(input,input[,ncol(input)] != -1)
+
+# calculate normalize 5'P occurence based on total reads per exon (only within the exon)
+exon_reads <- subset(input, V11 == 0) %>% ## sum exonic read depth only
+	group_by(V5, V6, V7, V8) %>%
+	summarise(reads=sum(V4))
+
+input <- mutate(input, length = V7 - V6) %>%
+	subset(length > 49) %>%
+	mutate(exon_reads = exon_reads$reads[match(V8, exon_reads$V8)]) %>%
+	mutate(norm_reads = V4/exon_reads)
 
 # calculate normalized distance values for reads relative to feature
 rel.dist=matrix(ifelse(input$V10=="-",(input$V2 - input$V6),(input$V3 - input$V7)),ncol=1)
@@ -22,12 +33,11 @@ rel.dist=matrix(ifelse(input$V11==0,ifelse(input[,10]=="-",((input[,7] - (input[
 
 input=cbind(input,rel.dist)
 
-
 fixy=ifelse(input$rel.dist < 0 & input$V11==0,0,ifelse(input$rel.dist > 100 & input$V11==0 , 100, input$rel.dist))
 input$rel.dist=fixy
 
 # bin read depth by distance
-exp.bin=stats.bin(input$rel.dist,input$V4,N=100)
+exp.bin=stats.bin(input$rel.dist,input$norm_reads,N=100)
 p.bin=cbind(matrix(exp.bin$centers,ncol=1),exp.bin$stats["mean",])
 out=cbind(p.bin)
 name <- sapply(strsplit(as.character(args[1]),'_'), function(l) l[1])
