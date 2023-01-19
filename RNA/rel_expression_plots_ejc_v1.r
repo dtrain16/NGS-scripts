@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
-# Run on output of BAM_to_wigs.sh
+# Run on output of BAM_to_EJC.sh
 # Compute coverage across exons as a percentage of total exon length (classic mode)
 
 options(echo=T)

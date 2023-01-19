@@ -13,18 +13,19 @@ print(args)
 input=read.delim(args[1],head=F)
 
 # Remove plastids and unmatched rows
-input <- subset(input,V1!='ChrM' & V1!='ChrC' & V1 != 'Mt' & V1 != 'Pt')
-input <- subset(input,input[,ncol(input)] != -1)
+input <- subset(input,V1!='ChrM' & V1!='ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
+	subset(input[,ncol(input)] != -1) %>%
+	mutate(length = V7 - V6) %>%
+        subset(length > 49) 
 
 # calculate normalize 5'P occurence based on total reads per exon (only within the exon)
-exon_reads <- subset(input, V11 == 0) %>% ## sum exonic read depth only
-	group_by(V5, V6, V7, V8) %>%
+exon_reads <- group_by(input, V8) %>%
 	summarise(reads=sum(V4))
 
-input <- mutate(input, length = V7 - V6) %>%
-	subset(length > 49) %>%
-	mutate(exon_reads = exon_reads$reads[match(V8, exon_reads$V8)]) %>%
-	mutate(norm_reads = V4/exon_reads)
+input <- mutate(input, exon_reads = exon_reads$reads[match(V8, exon_reads$V8)]) %>%
+	subset(exon_reads != 0) %>%
+	mutate(norm_reads = V4/exon_reads) %>%
+	mutate(norm_reads = ifelse(exon_reads < 0, norm_reads * -1, norm_reads))
 
 # calculate normalized distance values for reads relative to feature
 rel.dist=matrix(ifelse(input$V10=="-",(input$V2 - input$V6),(input$V3 - input$V7)),ncol=1)
