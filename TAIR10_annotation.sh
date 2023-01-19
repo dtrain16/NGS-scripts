@@ -57,21 +57,39 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-# exon annotation based on primary isoform
+# all exons (including ncRNAs) based on primary isoform
 exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
         mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
-	mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
-	subset(Isoform==1) %>% ## subset for primary transcript isoform
+        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) %>% ## subset for primary transcript isoform
         select(c('seqname','start','end','Name','score','strand'))
 
 write.table(exon,'Arabidopsis_thaliana.TAIR10.54_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 exon1 <- mutate(exon, test = sapply(strsplit(Name, "\\."), function(l) l[3])) %>%
-	subset(test == "exon1") %>%
-	select(-test)
+        subset(test == "exon1") %>%
+        select(-test)
 
 write.table(exon1,'Arabidopsis_thaliana.TAIR10.54_exon1.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+# exon from mRNAs for primary isoform
+mRNA <- subset(ens, ens$feature == 'mRNA') %>%
+        mutate(ID=getAttributeField(attributes, 'ID')) %>%
+        mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) ## subset for primary transcript isoform
+
+exon <- subset(ens, ens$feature == 'exon') %>%
+        mutate(Name=getAttributeField(attributes, 'Name')) %>%
+        mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
+	mutate(Parent=sapply(strsplit(Parent, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
+	subset(Isoform==1) %>% ## subset for primary transcript isoform
+	subset(Parent %in% mRNA$Name) %>%
+        select(c('seqname','start','end','Name','score','strand'))
+
+write.table(exon,'Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
