@@ -80,7 +80,7 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
         subset(Isoform==1) ## subset for primary transcript isoform
 
-exon <- subset(ens, ens$feature == 'exon') %>%
+cd_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
         mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
 	mutate(Parent=sapply(strsplit(Parent, ":"), function(l) l[2])) %>%
@@ -89,7 +89,19 @@ exon <- subset(ens, ens$feature == 'exon') %>%
 	subset(Parent %in% mRNA$Name) %>%
         select(c('seqname','start','end','Name','score','strand'))
 
-write.table(exon,'Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+# exon from ncRNA
+nc_exon <- subset(ens, ens$feature == 'exon') %>%
+        mutate(Name=getAttributeField(attributes, 'Name')) %>%
+        mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
+        mutate(Parent=sapply(strsplit(Parent, ":"), function(l) l[2])) %>%
+        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) %>% ## subset for primary transcript isoform
+        subset(!(Parent %in% mRNA$Name)) %>%
+        select(c('seqname','start','end','Name','score','strand'))
+
+write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.54_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
@@ -98,6 +110,20 @@ utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %
 	select(seqname, start, end, strand, id, feature)
 
 write.table(utr, "Arabidopsis_thaliana.TAIR10.54_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
+5utr <- subset(ens, feature == "five_prime_UTR") %>%
+        mutate(id = getAttributeField(attributes, 'Parent')) %>%
+        mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+        select(seqname, start, end, strand, id, feature)
+
+write.table(5utr, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
+3utr <- subset(ens, feature == "three_prime_UTR") %>%
+        mutate(id = getAttributeField(attributes, 'Parent')) %>%
+        mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+        select(seqname, start, end, strand, id, feature)
+
+write.table(3utr, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 quit()
 n
