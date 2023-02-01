@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
-# Run on output of BAM_to_wigs.sh
-# Computes normalized 5'P read frequency across full exon length
+# Run on output of BAM_to_EJC_3p.sh
+# Computes normalized 5'P end frequency for last 50 nt upstream of exon-exon junction (> 49 nt length, see Lee et al 2019 Plant Cell)
 
 options(echo=T)
 library(fields)
@@ -10,42 +10,37 @@ args=commandArgs(trailingOnly=T)
 print(args)
 
 # Read in file
-input=read.delim(args[1],head=F)
-
+input=read.delim(args[1],head=F) %>% 
 # Remove plastids and unmatched rows
-input <- subset(input,V1!='ChrM' & V1!='ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
-	subset(input[,ncol(input)] != -1) %>%
+	subset(input$V1!='ChrM' & input$V1!='ChrC' & input$V1 != 'Mt' & input$V1 != 'Pt') %>%
 	mutate(length = V7 - V6) %>%
-        subset(length > 49) 
+# features at least 50 bp in length
+	subset(length > 49) %>%
+# calculate position relative to 3' end of feature
+	mutate(pos_3p = ifelse(V10 == "+", V2-V7, V6-V3))
 
-# calculate normalize 5'P occurence based on total reads per exon (only within the exon)
-exon_reads <- group_by(input, V8) %>%
+
+# sum all reads in 50 nt window upstream of 3' end
+exon_3p_sum <- subset(input, pos_3p < 0 & pos_3p > -50) %>%
+	group_by(V8) %>%
 	summarise(reads=sum(V4))
 
-input <- mutate(input, exon_reads = exon_reads$reads[match(V8, exon_reads$V8)]) %>%
-	subset(exon_reads != 0) %>%
-	mutate(norm_reads = V4/exon_reads) %>%
-	mutate(norm_reads = ifelse(exon_reads < 0, norm_reads * -1, norm_reads))
+# normalise depth per nt by sum of reads across 50 nt window
+exon_3p <- subset(input, pos_3p < 0 & pos_3p > -51) %>%
+	mutate(sum_reads = exon_3p_sum$reads[match(V8, exon_3p_sum$V8)]) %>%
+	mutate(norm_reads = V4/sum_reads) %>%
+	subset(sum_reads > 0)
 
-# calculate normalized distance values for reads relative to feature
-rel.dist=matrix(ifelse(input$V10=="-",(input$V2 - input$V6),(input$V3 - input$V7)),ncol=1)
+# Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
+sum_exon_3p <- group_by(exon_3p, pos_3p) %>% summarise(sum_norm_reads = sum(norm_reads)) %>% mutate(total_reads = sum(sum_reads)) %>% mutate(rel_freq = sum_norm_reads/total_reads)
 
-rel.dist=matrix(ifelse(input$V11==0,ifelse(input[,10]=="-",((input[,7] - (input[,2]))/(input[,7] - input[,6]))*100,(((input[,2]) - input[,6])/(input[,7] - input[,6]))*100),ifelse(input$V11>0,input$V11 + 100,input$V11)),ncol=1)
+name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
 
-input=cbind(input,rel.dist)
+## diagnostic plot on single sample
+pdf(paste0(name,".pdf"))
+plot(y=sum_exon_3p$rel_freq, x= sum_exon_3p$pos_3p)
+dev.off()
 
-fixy=ifelse(input$rel.dist < 0 & input$V11==0,0,ifelse(input$rel.dist > 100 & input$V11==0 , 100, input$rel.dist))
-input$rel.dist=fixy
-
-# bin read depth by distance
-exp.bin=stats.bin(input$rel.dist,input$norm_reads,N=100)
-p.bin=cbind(matrix(exp.bin$centers,ncol=1),exp.bin$stats["mean",])
-out=cbind(p.bin)
-name <- sapply(strsplit(as.character(args[1]),'_'), function(l) l[1])
-colnames(out)=c('pos',paste(name))
-name2 <- sapply(strsplit(args[1], '\\.'), function(l) l[1])
-name3 <- sapply(strsplit(args[1], '_'), function(l) l[3])
-name3 <- gsub(".bed",".values.txt",name3)
-write.table(out,paste(name2,name3,sep='.'),sep='\t', quote=F, row.names=F)
-
+## output
+write.table(sum_exon_3p, paste0(name,".5p.txt"), sep='\t', quote=F, row.names=F)
 
