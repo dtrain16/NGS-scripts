@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -u
 
 # Script to extract genome coverage across features of interest
 # optimised to caluclate 5'-P end frequency at exons from PARE or GMUCT
@@ -37,10 +37,12 @@ if [[ "$str"  == "unstranded" ]] ; then
 	echo "BAM to bed..."
 	bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
-	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.bed > ${smp%%.bam}_${out}_10bp.5p.bed 
+	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_10bp.5p.bed 
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v2.r ${smp%%.bam}_${out}_10bp.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.5p.bed
+	#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bam}_${out}_10bp.5p.bed
 
 	echo 'cleaning'
 	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_10bp.5p.bed
@@ -70,9 +72,12 @@ if [[ "$str"  == "forward" ]] ; then
         awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v2.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v2.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 	
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+
 	echo "Cleaning"
 	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
@@ -102,8 +107,11 @@ if [[ "$str"  == "reverse" ]] ; then
         awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
         echo 'do maths'
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v2.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v2.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
         echo "Cleaning"
         rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed

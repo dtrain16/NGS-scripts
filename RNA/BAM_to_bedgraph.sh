@@ -45,7 +45,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.10bp.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v1.r ${smp%%.bed*}_${out}.10bp.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.bed
 
 	echo 'cleaning'
 	rm -v ${smp%%bam}bed ${smp%%.bed*}_${out}.bed
@@ -75,8 +75,8 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "forward" ]] ; then
         awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.10bp.plus.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v1.r ${smp%%.bed*}_${out}.10bp.minus.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v1.r ${smp%%.bed*}_${out}.10bp.plus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.plus.bed
 	
 	echo "Cleaning"
 	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed
@@ -107,8 +107,8 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
         awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.10bp.minus.bed
 	
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v1.r ${smp%%.bed*}_${out}.10bp.plus.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_v1.r ${smp%%.bed*}_${out}.10bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.plus.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.minus.bed
 
 	echo "Cleaning ..."	
 	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed
