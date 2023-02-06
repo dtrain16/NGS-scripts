@@ -41,8 +41,7 @@ if [[ "$str"  == "unstranded" ]] ; then
 
 	echo 'do maths'
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.5p.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.5p.bed
-	#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bam}_${out}_10bp.5p.bed
+	#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.5p.bed
 
 	echo 'cleaning'
 	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_10bp.5p.bed
@@ -75,8 +74,8 @@ if [[ "$str"  == "forward" ]] ; then
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 	
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+	#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        #Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
 	echo "Cleaning"
 	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed
@@ -110,8 +109,8 @@ if [[ "$str"  == "reverse" ]] ; then
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_3p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
+	#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        #Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_5p.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
         echo "Cleaning"
         rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed

@@ -42,5 +42,5 @@ plot(y=sum_exon_5p$rel_freq, x= sum_exon_5p$pos_5p)
 dev.off()
 
 ## output
-write.table(sum_exon_3p, paste0(name,".5p.txt"), sep='\t', quote=F, row.names=F)
+write.table(sum_exon_5p, paste0(name,".5p.txt"), sep='\t', quote=F, row.names=F)
 
