@@ -170,8 +170,13 @@ if [[ $fq2 == *"fq.gz" ]]; then mv 2_read_trimming//${fq2%%.fq*}_val_2.fq* -t 3_
 
 cd 3_align/
 
+ Could not ls Col0_RT_Rep1_R1.fq.gz_val_1.fq*
+
 # subjunc read alignment
-STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fq1%%.fastq*}_val_1.fq*, ${fq2%%.fastq*}_val_2.fq* --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+if [[ $fq1 == *"fq.gz" ]]; then input1=${fq1%%.fq*}_val_1.fq*; else input1=${fq1%%.fastq*}_val_1.fq*; fi
+if [[ $fq1 == *"fq.gz" ]]; then input2=${fq2%%.fq*}_val_2.fq*; else input2=${fq1%%.fastq*}_val_2.fq*; fi
+
+STAR --runThreadN 8 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input1 $input2 --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
