@@ -36,19 +36,19 @@ echo ""
 if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then 
 
 	echo "BAM to bed..."
-	bedtools genomecov -bga -split -ibam $smp > ${smp%%bam}bed
+	bedtools genomecov -bg -split -ibam $smp > ${smp%%bam}bed
 
 	echo 'bedtools for coverage across exons...'
-	closestBed -D "b" -a ${smp%%bam}bed -b $bedfile > ${smp%%.bed*}_${out}.bed
+	closestBed -D "b" -a ${smp%%bam}bed -b $bedfile > ${smp%%.bam}_${out}.bed
 
 	echo 'subset ...'
-	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.10bp.bed
+	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.bed > ${smp%%.bam}_${out}.100bp.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.100bp.bed
 
 	echo 'cleaning'
-	rm -v ${smp%%bam}bed ${smp%%.bed*}_${out}.bed
+	rm -v ${smp%%bam}bed ${smp%%.bam}_${out}.bed ${smp%%.bam}_${out}.100bp.bed
 
 fi
 
@@ -65,21 +65,21 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "forward" ]] ; then
 	
 	echo "BAM to bedgraphs at exons ..."
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
+	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
 	closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
-	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.10bp.minus.bed
+	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.100bp.minus.bed
 
 	# plus strand
-        bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
+        bedtools genomecov -bg -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
         closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bed*}_${out}.plus.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.10bp.plus.bed
+        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.100bp.plus.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.minus.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.plus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.100bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.100bp.plus.bed
 	
 	echo "Cleaning"
-	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed
+	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed ${smp%%.bed*}_${out}.100bp*bed
 
 fi
 
@@ -97,21 +97,21 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
 	
 	echo "BAM to bedgraphs at exons ..."
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
+	bedtools genomecov -bg -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bed*}_${out}.plus.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.10bp.plus.bed
+        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bed*}_${out}.plus.bed > ${smp%%.bed*}_${out}.100bp.plus.bed
         
 	# minus strand
-        bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
+        bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
         closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bed*}_${out}.minus.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.10bp.minus.bed
+        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bed*}_${out}.minus.bed > ${smp%%.bed*}_${out}.100bp.minus.bed
 	
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.plus.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc_whole.r ${smp%%.bed*}_${out}.10bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.100bp.plus.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.100bp.minus.bed
 
 	echo "Cleaning ..."	
-	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed
+	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bed*}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bed*}_${out}.plus.bed ${smp%%.bed*}_${out}.100bp*bed
 
 fi
 
@@ -120,15 +120,15 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	echo "PE not developed properly!!!"
 	
 	echo "BAM to bed..."
-        bedtools genomecov -bga -split -ibam $smp > ${smp%%.bam*}.bed
+        bedtools genomecov -bg -split -ibam $smp > ${smp%%.bam*}.bed
 
         echo 'bedtools for coverage across exons...'
         closestBed -D "b" -a ${smp%%.bam*}.bed -b $bedfile > ${smp%%.bed*}_${out}.bed
 
         echo 'subset to + 50bp / -50 bp ...'
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.10bp.bed
+        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bed*}_${out}.bed > ${smp%%.bed*}_${out}.100bp.bed
 
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.10bp.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.100bp.bed
 
 	
 
@@ -159,9 +159,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "forward" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bg -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 
 	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
 	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam $smp -v
@@ -193,9 +193,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "reverse" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bg -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
 	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam -v
