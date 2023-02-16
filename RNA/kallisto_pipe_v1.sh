@@ -4,6 +4,12 @@
 # https://www.nature.com/articles/nbt.3519
 # Build annotation index kallisto index -i annotation.idx -k 21 annotation.fa
 
+### CONDA environment
+# conda create --name kallisto
+# conda install -n kallisto -c bioconda fastqc
+# conda install -n kallisto -c bioconda kallisto
+# conda install -n kallisto -c bioconda cutadapt
+
 set -eu
 
 if [ "$#" -lt 5 ]; then
