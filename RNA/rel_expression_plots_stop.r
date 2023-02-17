@@ -26,7 +26,11 @@ stop_5p <- mutate(input, sum_reads = stop_5p_sum$reads[match(V9, stop_5p_sum$V9)
 	subset(abs(sum_reads) > 0)
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
-sum_stop_5p <- group_by(stop_5p, pos) %>% summarise(sum_norm_reads = sum(norm_reads)) %>% mutate(total_reads = sum(sum_norm_reads)) %>% mutate(rel_freq = sum_norm_reads/total_reads)
+sum_stop_5p <- group_by(stop_5p, pos) %>% 
+	summarise(sum_norm_reads = sum(norm_reads)) %>% 
+	mutate(total_reads = sum(sum_norm_reads)) %>% 
+	mutate(rel_freq = sum_norm_reads/total_reads) %>%
+	select(pos, rel_freq)
 
 # name output file
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])

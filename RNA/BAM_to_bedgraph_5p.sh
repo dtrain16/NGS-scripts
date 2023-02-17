@@ -40,13 +40,13 @@ if [[ "$str"  == "unstranded" ]] ; then
 	closestBed -D "b" -a ${smp%%bam}5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
 
 	echo 'subset ...'
-	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}.100bp.5p.bed
+	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_100bp.5p.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.100bp.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}_100bp.5p.bed
 	
 	echo 'cleaning'
-	rm -v ${smp%%bam}5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}.100bp.5p.bed
+	rm -v ${smp%%bam}5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_100bp.5p.bed
 
 fi
 
@@ -65,19 +65,19 @@ if [[ "$str"  == "forward" ]] ; then
 	# minus strand
 	bedtools genomecov -bg -5 i-scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.5p.bed
 	closestBed -D "b" -a ${smp%%bam}minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}.100bp.minus.5p.bed
+	awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_100bp.minus.5p.bed
 
 	# plus strand
         bedtools genomecov -bg -5 -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.5p.bed
         closestBed -D "b" -a ${smp%%bam}plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}.100bp.plus.5p.bed
+        awk -F$'\t' '$NF<100 && $NF>-100' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_100bp.plus.5p.bed
 
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.100bp.minus.5p.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.100bp.plus.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}_100bp.minus.5p.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}_100bp.plus.5p.bed
 
 	echo "Cleaning"
-	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%bam}plus.bed ${smp%%.bam}_${out}.plus.bed ${smp%%.bam}_${out}.100bp*bed
+	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%bam}plus.bed ${smp%%.bam}_${out}.plus.bed ${smp%%.bam}_${out}_100bp*bed
 
 fi
 

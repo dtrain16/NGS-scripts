@@ -31,7 +31,10 @@ exon_3p <- subset(input, pos < 0 & pos > -51) %>%
 	subset(abs(sum_reads) > 0)
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
-sum_exon_3p <- group_by(exon_3p, pos) %>% summarise(sum_norm_reads = sum(norm_reads)) %>% mutate(total_reads = sum(sum_norm_reads)) %>% mutate(rel_freq = sum_norm_reads/total_reads)
+sum_exon_3p <- group_by(exon_3p, pos) %>% summarise(sum_norm_reads = sum(norm_reads)) %>% 
+	mutate(total_reads = sum(sum_norm_reads)) %>% 
+	mutate(rel_freq = sum_norm_reads/total_reads) %>%
+	select(pos, rel_freq)
 
 # name output file
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
