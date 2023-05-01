@@ -37,15 +37,15 @@ test[is.na(test)] <- 0
 keep <- rowSums(test[2:5] > 5) > 1
 y <- test[keep,]
 
-y1 <- 	gather(y, sample, val, -V8) %>%
-	mutate(genotype = sapply(strsplit(sample, "_"), function(l) l[1])) %>%
-	group_by(genotype, V8) %>%
+#y1 <- 	gather(y, sample, val, -V8) %>%
+#	mutate(genotype = sapply(strsplit(sample, "_"), function(l) l[1])) %>%
+#	group_by(genotype, V8) %>%
 	# mean read ends per genotype
-	summarise(mean_val = mean(val)) %>% 
-	spread(genotype, mean_val) %>%
-	mutate(fc = (dxo1+1)/(WT+1))
+#	summarise(mean_val = mean(val)) %>% 
+#	spread(genotype, mean_val) %>%
+#	mutate(fc = (dxo1+1)/(WT+1))
 
 ## output
-write.table(y1, "ejc_rna_dxo1.txt", sep='\t', quote=F, row.names=F)
+write.table(y, "ejc_rna_dxo1.txt", sep='\t', quote=F, row.names=F)
 
 

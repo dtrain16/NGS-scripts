@@ -15,8 +15,8 @@ set -eu
 
 if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
-echo "USAGE: BAM_to_bedgraph.sh <sample> <SE, PE> <unstranded, stranded, rev_stranded> <chr_sizes>"
-echo "EXAMPLE: BAM_to_bedgraph.sh col0-r1.bam PE unstranded TAIR10_Chr.all.fasta.len"
+echo "USAGE: BAM_to_bigWig.sh <BAM> <SE, PE> <unstranded, stranded, rev_stranded> <chr_sizes>"
+echo "EXAMPLE: BAM_to_bigWig.sh col0-r1.bam PE unstranded TAIR10_Chr.all.fasta.len"
 exit 1
 fi
 
@@ -42,7 +42,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
 	# bg to bigWig
 	echo "bigWig ..."
-	/home/dganguly/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
 fi
 
