@@ -38,11 +38,11 @@ test[is.na(test)] <- 0
 keep <- rowSums(test[2:5] > 5) > 1
 y <- test[keep,]
 
+write.table(y, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
+
 y1 <-   gather(y, sample, val, -V8) %>%
   mutate(genotype = sapply(strsplit(sample, "_"), function(l) l[1])) %>%
   mutate(genotype = factor(genotype, levels = c("WT", "dxo1")))
-
-write.table(y1, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
 
 ## t.test for differential 5'P read depth at EJC region
 out1 <- NULL
