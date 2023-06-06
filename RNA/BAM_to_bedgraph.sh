@@ -109,8 +109,8 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.bed > ${smp%%.bam}_${out}.${dis}bp.minus.bed
 	
 	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.${dis}bp.plus.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bed*}_${out}.${dis}bp.minus.bed
+	Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.${dis}bp.plus.bed
+        Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.${dis}bp.minus.bed
 
 	echo "Cleaning ..."	
 	rm -v ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bed ${smp%%.bam}_${out}.minus.bed ${smp%%bam}plus.bed ${smp%%.bam}_${out}.plus.bed
