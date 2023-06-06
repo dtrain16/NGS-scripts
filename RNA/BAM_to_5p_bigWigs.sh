@@ -38,7 +38,5 @@ bedtools genomecov -bga -5 -ibam $smp > ${smp%%bam}5p.bg
 echo "bigWig ..."
 $HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
 
-
-
-
+rm ${smp%%bam}5p.bg
 

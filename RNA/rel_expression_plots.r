@@ -16,9 +16,9 @@ input=subset(input,input$V1!='ChrM' & input$V1!='ChrC' & input$V1 != 'Mt' & inpu
 input=subset(input,input[,ncol(input)] != -1)
 
 # calculate normalized distance values for reads relative to feature
-rel.dist=matrix(ifelse(input$V11==0,ifelse(input[,10]=="-",((input[,7] - (input[,2]))/(input[,7] - input[,6]))*1000,(((input[,2]) - input[,6])/(input[,7] - input[,6]))*1000),ifelse(input$V11>0,input$V11 + 1000,input$V11)),ncol=1)
+rel.dist=matrix(ifelse(input$V11==0,ifelse(input[,10]=="-",((input[,7] - (input[,2]))/(input[,7] - input[,6]))*100,(((input[,2]) - input[,6])/(input[,7] - input[,6]))*100),ifelse(input$V11>0,input$V11 + 100,input$V11)),ncol=1)
 input=cbind(input,rel.dist)
-fixy=ifelse(input$rel.dist < 0 & input$V11==0,0,ifelse(input$rel.dist >1000 & input$V11==0,1000,input$rel.dist))
+fixy=ifelse(input$rel.dist < 0 & input$V11==0,0,ifelse(input$rel.dist > 100 & input$V11==0, 100, input$rel.dist))
 input$rel.dist=fixy
 
 # bin read depth by distance

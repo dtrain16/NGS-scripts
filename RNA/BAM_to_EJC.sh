@@ -43,7 +43,7 @@ if [[ "$str"  == "unstranded" ]] ; then
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.5p.bed
 
 	echo 'cleaning'
-	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_10bp.5p.bed
+	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
 
 fi
 
@@ -74,41 +74,7 @@ if [[ "$str"  == "forward" ]] ; then
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
 	
 	echo "Cleaning"
-	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed
+	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed
 
 fi
-
-
-if [[ "$str"  == "reverse" ]] ; then
-	
-	# https://www.biostars.org/p/179035/
-	# extract reads from + and - strand
-
-	echo 'stranded BAMs'
-	# reverse strand
-	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
-	# forward strand
-	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
-	
-        echo "BAM to bedgraphs at exons ..."
-        # minus strand
-        bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.minus.5p.bed
-        closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_10bp.minus.5p.bed
-
-        # plus strand
-        bedtools genomecov -bg -5 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.plus.5p.bed
-        closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_10bp.plus.5p.bed
-
-        echo 'do maths'
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.plus.5p.bed
-
-        echo "Cleaning"
-        rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_10bp.plus.5p.bed
-	
-fi
-
-
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Source GFF files from ENSEMBL Genomes [https://plants.ensembl.org/info/website/ftp/index.html]
-wget http://ftp.ebi.ac.uk/ensemblgenomes/pub/plants/current/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.51.gff3.gz
+wget http://ftp.ebi.ac.uk/ensemblgenomes/pub/plants/current/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.54.gff3.gz
 wget http://ftp.ebi.ac.uk/ensemblgenomes/pub/plants/current/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
 wget http://ftp.ebi.ac.uk/ensemblgenomes/pub/plants/current/fasta/arabidopsis_thaliana/cdna/Arabidopsis_thaliana.TAIR10.cdna.all.fa.gz
 
@@ -57,6 +57,17 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
+# mRNA annotation - primary isoform only
+mRNA <- subset(ens, ens$feature == 'mRNA') %>%
+        mutate(ID=getAttributeField(attributes, 'ID')) %>%
+        mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
+	subset(Isoform==1) %>%
+        select(c('seqname','start','end','Name','score','strand'))
+
+write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+
 # all exons (including ncRNAs) based on primary isoform
 exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
@@ -103,13 +114,31 @@ nc_exon <- subset(ens, ens$feature == 'exon') %>%
 
 write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.54_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
+## CDS annotation
+
+cds <- subset(ens, feature == "CDS") %>% 
+	mutate(id = getAttributeField(attributes, 'Parent')) %>%
+        mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) %>%
+	group_by(seqname, strand, id, feature) %>%
+	summarise(start = min(start), end = max(end) ) %>%
+	select(seqname, start, end, strand, id, feature) %>%
+	arrange(seqname, start)
+
+write.table(cds, "Arabidopsis_thaliana.TAIR10.54_cds.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
 	mutate(id = getAttributeField(attributes, 'Parent')) %>%
 	mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) %>%
 	select(seqname, start, end, strand, id, feature)
 
 write.table(utr, "Arabidopsis_thaliana.TAIR10.54_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
+## separate UTRs
 
 utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
