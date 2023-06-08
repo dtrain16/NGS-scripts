@@ -145,14 +145,14 @@ utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
         select(seqname, start, end, strand, id, feature)
 
-write.table(5utr, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(utr_5, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 utr_3 <- subset(ens, feature == "three_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
         select(seqname, start, end, strand, id, feature)
 
-write.table(3utr, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(utr_3, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 # start and STOP codon for primary mRNA isoform
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%

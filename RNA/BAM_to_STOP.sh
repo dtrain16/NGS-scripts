@@ -44,7 +44,7 @@ if [[ "$str"  == "unstranded" ]] ; then
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_50bp.5p.bed
 
 	echo 'cleaning'
-	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_50bp.5p.bed
+	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
 
 fi
 
@@ -75,7 +75,7 @@ if [[ "$str"  == "forward" ]] ; then
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_50bp.plus.5p.bed
 	
 	echo "Cleaning"
-	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_50bp.plus.5p.bed
+	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed
 
 fi
 
@@ -107,7 +107,7 @@ if [[ "$str"  == "reverse" ]] ; then
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_50bp.plus.5p.bed
 
         echo "Cleaning"
-        rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}_${out}_10bp.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed ${smp%%.bam}_${out}_50bp.plus.5p.bed
+        rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed
 	
 fi
 

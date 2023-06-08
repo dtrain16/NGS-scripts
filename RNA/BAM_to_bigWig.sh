@@ -44,6 +44,8 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	echo "bigWig ..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
+	rm ${smp%%bam}bg
+
 fi
 
 if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
@@ -64,8 +66,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes} ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 	
-	rm ${smp%%.bam}*forward*bam -v
-	rm ${smp%%.bam}*reverse*bam -v
+	rm ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.bg ${smp%%bam}plus.bg
 
 fi
 
@@ -88,8 +89,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 	
-	rm ${smp%%.bam}*forward*bam -v
-	rm ${smp%%.bam}*reverse*bam -v
+	rm ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}plus.bg ${smp%%bam}minus.bg
 
 fi
 
@@ -107,7 +107,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	echo "bigWig ..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
-	rm $smp -v
+	rm ${smp%%bam}bg $smp
 
 fi
 
@@ -144,8 +144,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
-	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam $smp -v
+	rm $smp ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}forward.bam ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam ${smp%%bam}minus.bg ${smp%%bam}plus.bg
 
 fi
 
@@ -182,9 +181,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm ${smp%%.bam}*R1*bam ${smp%%.bam}*R2*bam -v
-	rm ${smp%%.bam}*forward*bam ${smp%%.bam}*reverse*bam -v
-	rm $smp -v
+	rm ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam ${smp%%bam}plus.bg ${smp%%bam}minus.bg
 
 fi
 

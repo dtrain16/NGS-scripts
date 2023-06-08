@@ -128,7 +128,10 @@ fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "rf" ]] ; then
 
-echo 'Coming soon!'
+echo "minus bam"
+
+
+
 
 fi
 
