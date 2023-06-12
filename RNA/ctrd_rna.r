@@ -4,7 +4,7 @@
 
 library(tidyverse)
 
-fls <- dir(pattern = "_10bp.5p.bed")
+fls <- dir(pattern = "_50bp.5p.bed")
 
 out <- NULL
 
@@ -33,11 +33,11 @@ test <- group_by(out, sample, V8) %>%
 
 ### NAs = 0 / no coverage
 test[is.na(test)] <- 0
-## at least 6 read ends in 2 samples
-keep <- rowSums(test[2:5] > 5) > 1
+## at least 5 read ends in 2 samples
+keep <- rowSums(test[2:5] > 4) > 1
 y <- test[keep,]
 
 ## Count table for NB-GLMs in edgeR
-write.table(y, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
+write.table(test, "ctrd_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
 
 
