@@ -16,14 +16,14 @@ for(i in fls){
         # calculate position relative to 3' end of feature
         mutate(pos = ifelse(V10 == "+", V2-V7, V6-V3)) %>%
         subset(pos > -20 & pos < -14) %>%	
-	group_by(V1, V2, V3, V8) %>% summarise(val=mean(V4)) %>%
+	group_by(V1, V2, V3, V9) %>% summarise(val=mean(V4)) %>%
 	mutate(sample = sapply(strsplit(i, 'Aligned'), function(l) l[1]))
 	
 out <- rbind(input,out)
 
 }
 
-test <- group_by(out, sample, V8) %>%
+test <- group_by(out, sample, V9) %>%
 	## sum read end depth across CTRD window
 	summarise(sum_val = sum(val)) %>%
 	spread(sample, sum_val)
