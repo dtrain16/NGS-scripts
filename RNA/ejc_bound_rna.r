@@ -3,7 +3,6 @@
 # Determine transripts with differential occupancy of EJC complex, inferred by abundance of 5'P reads 30-25 nt upstream of the 3' end of an exon.
 
 library(tidyverse)
-library(piecewiseSEM)
 
 fls <- dir(pattern = "_10bp.5p.bed")
 
@@ -35,11 +34,11 @@ test <- group_by(out, sample, V8) %>%
 ### NAs = 0 / no coverage
 test[is.na(test)] <- 0
 ## at least 5 read ends in 2 samples
-keep <- rowSums(test[2:5] > 4) > 1
-y <- test[keep,]
+#keep <- rowSums(test[2:5] > 4) > 1
+#y <- test[keep,]
 
 ## Count table for NB-GLMs in edgeR
-write.table(y, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
+write.table(test, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
 
 ### t-tests with p-value adjustment
 #y1 <-   gather(y, sample, val, -V8) %>%
