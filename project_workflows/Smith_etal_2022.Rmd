@@ -83,7 +83,7 @@ gffRead <- function(gffFile, nrows = -1) {
 
 ## directories
 quant <- "quant_files"
-anno_dir <- "/home/diepg/ref_seqs/TAIR10"
+anno_dir <- "~/ref_seqs/"
 anno <- gffRead(file.path(anno_dir, "Arabidopsis_thaliana.TAIR10.51.gff3")) %>%
   subset(feature == "gene") %>% 
   mutate(ID = getAttributeField(attributes, "gene_id")) %>%
@@ -528,7 +528,7 @@ p1 <- ggplot(out_all) + aes(x=k, colour=Condition, fill=Condition) +
         scale_x_continuous(name = "k-decay")
 
 p2 <- ggplot(out_all) + aes(x=rsq, y=halflife, color=Condition) +
-        ngeom_point() +
+        geom_point() +
         theme_niwot() +
 	#facet_wrap(~Condition) +
 	#coord_cartesian(xlim=c(0,1)) +
