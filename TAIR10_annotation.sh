@@ -93,23 +93,23 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 cd_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
-        mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
-	mutate(Parent=sapply(strsplit(Parent, ":"), function(l) l[2])) %>%
-	mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
+        mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
+        mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
+        mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
 	subset(Isoform==1) %>% ## subset for primary transcript isoform
-	subset(Parent %in% mRNA$Name) %>%
-        select(c('seqname','start','end','Name','score','strand'))
+	subset(Transcript %in% mRNA$Name) %>%
+        select(seqname,start,end,Name,score,strand)
 
 write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # exon from ncRNA
 nc_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
-        mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
-        mutate(Parent=sapply(strsplit(Parent, ":"), function(l) l[2])) %>%
-        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
+        mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
+        mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
+        mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
         subset(Isoform==1) %>% ## subset for primary transcript isoform
-        subset(!(Parent %in% mRNA$Name)) %>%
+        subset(!(Transcript %in% mRNA$Name)) %>%
         select(c('seqname','start','end','Name','score','strand'))
 
 write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.54_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)

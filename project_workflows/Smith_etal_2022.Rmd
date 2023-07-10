@@ -104,6 +104,11 @@ metatable <- read_csv("exp_setup.csv") %>%
                 ifelse(Condition == "Rec" & Timepoint == 80, 30,
                 ifelse(Condition == "Rec" & Timepoint == 90, 40, Timepoint))))))))
 
+## RRGD genes
+rrgd <- read_csv("TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
+  select(-c(3:6,33:ncol(.))) %>%
+  clean_names %>% subset(rrgd_loci == "RRGD")
+
 new_lvls <- arrange(metatable, as.numeric(paste0(metatable$Sample)))$Sample
 metatable$Sample <- factor(metatable$Sample, levels=new_lvls)
 
@@ -257,7 +262,7 @@ normFactors_mean <- subset(d1, ID %in% refgenes$ID) %>%
 	group_by(Timepoint, Condition, Experiment) %>%
 	summarise(decay_fac = mean(frac_cpm))
 
-## apply decay normalization and filter any genes with a fold-increase after T10
+## apply decay normalization and filter any genes with a fold-increase after T10 (all conditions)
 d2 <- mutate(d1, decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
 	mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
 	mutate(test = ifelse(decaynorm_frac_cpm >= 1.5 & Timepoint != 10, yes = 1, no = 0)) %>%
@@ -276,7 +281,8 @@ normData <- select(d2, -frac_cpm, -test, -decay_fac) %>%
 	mutate(log_frac_cpm = log(decaynorm_frac_cpm + 0.01))
 
 ## decay normalization and filter genes with a fold-increase after T10 (NL only)
-d3 <- subset(d1, Condition == "NL") %>%                                                                   mutate(decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
+d3 <- subset(d1, Condition == "NL") %>%
+	mutate(decay_fac = normFactors_mean$decay_fac[match(interaction(Timepoint,Condition,Experiment), interaction(normFactors_mean$Timepoint, normFactors_mean$Condition, normFactors_mean$Experiment))]) %>%
         mutate(decaynorm_frac_cpm = frac_cpm/decay_fac) %>%
         mutate(test = ifelse(decaynorm_frac_cpm >= 1.5 & Timepoint != 10, yes = 1, no = 0)) %>%
 	mutate(test = ifelse(is.na(decaynorm_frac_cpm) == T, 2, test))
@@ -293,7 +299,7 @@ length(unique(normData_NL$ID))
 length(unique(normData$ID))
 
 ###########################
-#### evaluate normalization and RNA pool decrease
+#### evaluate decrease in RNA pool and normalize
 ###########################
 
 x2 <- subset(metatable, Treatment=="Cordycepin") %>%
@@ -546,6 +552,18 @@ pdf("model_parameters_all.pdf")
 p1 / ggMarginal(p2, groupColour = TRUE, groupFill = TRUE, type = "histogram") + ggMarginal(p3, groupColour = TRUE, groupFill = TRUE, type = "histogram")
 dev.off()
 
+################
+## Venn modelling results
+################
+a <- mutate(out2, test = ifelse(pval < 0.05 & k > 0, yes = 1, no =0)) %>%
+	select(geneID, Condition, test) %>%
+	spread(Condition, test)
+
+pdf("modelling_conditions.pdf")
+vennDiagram(a[2:4], mar=c(2,2,2,2), lwd=1, cex=1)
+dev.off()
+
+
 ###########################
 ## Heatmap of fractional decrease
 ###########################
@@ -556,6 +574,9 @@ my_grps <- dplyr::select(metatable, -Title, -Fastq, -checksum, -Experiment, -Tre
 
 heatmap_input <- group_by(normData, ID, Timepoint, Condition) %>%
         summarise(rel_cpm = mean(decaynorm_frac_cpm)) %>% mutate(Treatment = "Cordycepin") %>%
+
+	subset(ID %in% out_all$geneID) %>% ## subset to 3960 modelled genes
+
         mutate(Sample = metatable$Sample[match(interaction(Timepoint,Condition,Treatment), interaction(metatable$Timepoint,metatable$Condition,metatable$Treatment))]) %>%
         na.omit() %>% ungroup() %>% select(-Timepoint, -Condition, -Treatment) %>%
         spread(Sample, rel_cpm) %>% column_to_rownames('ID')
@@ -601,17 +622,35 @@ subset(hmap_rows, decay_cat == 1) %>% rownames_to_column("geneID") %>% write_csv
 ## decay profile of sample genes
 ##############################
 
-test2 <- select(rrgd, locus_identifier) %>%
-	mutate(r_sq_nl = out_NL$rsq[match(locus_identifier, out_NL$geneID)]) %>%
-	na.omit() %>%
-	arrange(r_sq_nl)
+# test2 <- select(rrgd, locus_identifier) %>%
+#	mutate(r_sq_nl = out_NL$rsq[match(locus_identifier, out_NL$geneID)]) %>%
+#	na.omit() %>%
+#	arrange(r_sq_nl)
 
 # sample_ids <- sample(unique(subset(out_all, rsq>0.8)$geneID), size = 3, replace = FALSE)
 # sample_ids <- c("AT1G74310","AT2G47180","AT3G25230")
-sample_ids <- test2$locus_identifier[96:99]
 
-pdf("sample_model_fit.pdf")
-test <- subset(normData, ID %in% sample_ids ) %>%
+model_ids <- hmap_rows %>% rownames_to_column('geneID') %>% left_join(out_all) %>%
+	group_by(geneID, decay_cat) %>%
+	summarise(mean_rsq = mean(rsq), std = sd(rsq)) %>%
+	mutate(crit = mean_rsq/std)
+
+sample_t1 <- subset(model_ids, decay_cat == 1) %>% arrange(desc(crit))
+sample_t1 <- sample_t1[1:2,]
+
+sample_t2 <- subset(model_ids, decay_cat == 2) %>% arrange(desc(crit))
+sample_t2 <- sample_t2[1:2,]
+
+sample_t3 <- subset(model_ids, decay_cat == 3) %>% arrange(desc(crit))
+sample_t3 <- sample_t3[1:2,]
+
+sample_t4 <- subset(model_ids, decay_cat == 4) %>% arrange(desc(crit))
+sample_t4 <- sample_t4[1:2,]
+
+sample_ids <- rbind(sample_t1, sample_t2, sample_t3, sample_t4) %>% select(geneID)
+
+pdf("sample_model_fit.pdf", paper="a4")
+test <- subset(normData, ID %in% sample_ids$geneID ) %>%
         group_by(ID, Timepoint, Condition) %>%
         summarise(relative_abundance = mean(decaynorm_frac_cpm),
                 reps = sum(!(is.na(decaynorm_frac_cpm))),
@@ -633,7 +672,7 @@ ggplot(data=test, aes(x = Timepoint, y = relative_abundance, col = Condition)) +
 	geom_text(x=20, y=0, label=paste0("R2=",round(test$rsq,2)), size=1.5) +
 	geom_text(x=20, y=0.1, label=paste0("t1/2=",round(test$halflife,2)), size=1.5)
 
-test <- subset(normData, ID %in% sample_ids ) %>%
+test <- subset(normData, ID %in% sample_ids$geneID ) %>%
 	mutate(rsq = out2$rsq[match(interaction(ID,Condition), interaction(out2$geneID,out2$Condition))]) %>% 
 	mutate(halflife=out2$halflife[match(interaction(ID,Condition), interaction(out2$geneID,out2$Condition))])
 
@@ -781,7 +820,9 @@ dev.off()
 ### Compute half-life difference between conditions
 ###############
 
-test <- dabest(.data = out_all, 
+#testx <- subset(modelled_trans, decay_cat == 4)
+
+test <- dabest(.data = testx,	#out_all, 
 	x = Condition,
         y = halflife,
         idx = c("NL", "EL", "Rec"),
@@ -797,7 +838,8 @@ plot(test2, slopegraph = TRUE)
 plot(test3, slopegraph = TRUE)
 
 ggplot(data=test1$data) + aes(x=Condition, y=log_halflife, fill=Condition) +
-        geom_boxplot() +
+ 	geom_violin() +
+	geom_boxplot() +
         stat_boxplot(geom="errorbar", width=0.5) +
         theme_niwot() +
 	scale_y_continuous(name="log2 half-life + 0.01 (min)") +
@@ -849,10 +891,6 @@ for(i in colnames(my.contrasts)){
 dge2_HL <- subset(dge2, contrast == "mock_ELvsNL")
 dge2_Rec <- subset(dge2, contrast == "mock_RECvsEL")
 dge2_Rec_US <- subset(dge2, contrast == "mock_RECvsNL")
-
-rrgd <- read_csv("TPC2016-00828-LSBR2_Supplemental_Data_Sets_5.csv", skip = 6) %>%
-  select(-c(3:6,33:ncol(.))) %>%
-  clean_names %>% subset(rrgd_loci == "RRGD")
 
 half_ratio <- out_all %>% 
 	select(geneID, halflife, Condition) %>% 
