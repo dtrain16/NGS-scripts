@@ -74,14 +74,19 @@ echo "                      "
 echo "kallisto"
 echo "                      "
 
+if [[ $R1 == *"fq.gz" ]]; then input=${R1%%.fq*}_trimmed.fq*; else input=${R1%%.fastq*}_trimmed.fq*; fi
+
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias --single $input -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-        kallisto quant -i $annotation --fr-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+        
+	kallisto quant -i $annotation --fr-stranded -t 4 --bias --single $input -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias --single ${R1%%.fastq*}_trimmed.fq* -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else
+	
+	kallisto quant -i $annotation --rf-stranded -t 4 --bias --single $input -b 10 -l 300 -s 100 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
 
@@ -140,14 +145,21 @@ echo "                      "
 echo "kallisto"
 echo "                      "
 
+if [[ $R1 == *"fq.gz" ]]; then input1=${R1%%.fq*}_val_1.fq*; else input1=${R1%%.fastq*}_val_1.fq*; fi
+
+if [[ $R2 == *"fq.gz" ]]; then input2=${R2%%.fq*}_val_2.fq*; else input2=${R2%%.fastq*}_val_2.fq*; fi
+
 if [ $strand == "unstranded" ]; then
 
-	kallisto quant -i $annotation -t 4 --bias -b 10 ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	kallisto quant -i $annotation -t 4 --bias -b 10 $input1 $input2 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 elif [ $strand == "fr_stranded" ]; then
-	kallisto quant -i $annotation --fr-stranded -t 4 --bias -b 10 ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+	
+	kallisto quant -i $annotation --fr-stranded -t 4 --bias -b 10 $input1 $input2 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
-else kallisto quant -i $annotation --rf-stranded -t 4 --bias -b 10 ${R1%%.fastq*}_val*fq.gz ${R2%%.fastq*}_val*fq.gz -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
+else 	
+
+	kallisto quant -i $annotation --rf-stranded -t 4 --bias -b 10 $input1 $input2 -o ./ 2>&1 | tee -a ../${name}_logs_${dow}.log
 
 fi
 
@@ -157,9 +169,9 @@ fi
 mv *fq.gz ../1_trimmed_fastq/
 
 ### extract quant files for local import
-cd ../../
-if [ ! -d "./quant_files" ]; then mkdir quant_files; fi
-fls=${name}_kallisto_${dow}
-for i in $fls; do echo $i; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant_files/$test; done
+#cd ../../
+#if [ ! -d "./quant_files" ]; then mkdir quant_files; fi
+#fls=${name}_kallisto_${dow}
+#for i in $fls; do echo $i; test=${i%%_kallisto*}; mkdir quant_files/$test; cp ${i}/2_quant/* -t quant_files/$test; done
 
 echo "complete"

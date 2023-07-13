@@ -192,7 +192,7 @@ macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}minus.bam -t ${ip%%bam}min
 ## generate bedfile with strand information using .narrowpeak
 awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_minus_peaks.narrowPeak > ${out}_minus_peaks.stranded.bed
 
-awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
+awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "+"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
 
 ## merge and sort by coordinate
 cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &

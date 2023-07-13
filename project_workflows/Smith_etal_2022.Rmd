@@ -820,9 +820,10 @@ dev.off()
 ### Compute half-life difference between conditions
 ###############
 
-#testx <- subset(modelled_trans, decay_cat == 4)
+#testx <- subset(model_ids, decay_cat == 4) %>%
+	left_join(out_all)
 
-test <- dabest(.data = testx,	#out_all, 
+test <- dabest(.data = out_all, #testx, 
 	x = Condition,
         y = halflife,
         idx = c("NL", "EL", "Rec"),

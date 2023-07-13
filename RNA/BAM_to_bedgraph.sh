@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eu
+set -u
 
 # Script to summarise read depth from BAM files across features of interest in bedGraph format
 
