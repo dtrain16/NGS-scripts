@@ -493,6 +493,10 @@ dev.off()
 ###########################
 
 out2 <- NULL
+
+### subset to check if removing T40 effects HL/REC modelling
+# normData <- subset(normData, Timepoint != 40)
+
 for( i in unique(normData$ID)){
 
 tmp <- subset(normData, ID == i)
@@ -610,13 +614,13 @@ out_all_decay <- mutate(out_all, decay_category = hmap_rows$decay_cat[match(gene
 
 write_csv(out_all_decay, "allconditions_halflife.csv")
 
-subset(hmap_rows, decay_cat == 3) %>% rownames_to_column("geneID") %>% write_csv("slow_decay_genes.csv")
+subset(hmap_rows, decay_cat == 3) %>% rownames_to_column("geneID") %>% write_csv("fast_decay_genes.csv")
 
-subset(hmap_rows, decay_cat == 2) %>% rownames_to_column("geneID") %>% write_csv("moderate_decay_genes.csv")
+subset(hmap_rows, decay_cat == 2) %>% rownames_to_column("geneID") %>% write_csv("slow_decay_genes.csv")
 
 subset(hmap_rows, decay_cat == 4) %>% rownames_to_column("geneID") %>% write_csv("rapid_decay_genes.csv")
 
-subset(hmap_rows, decay_cat == 1) %>% rownames_to_column("geneID") %>% write_csv("fast_decay_genes.csv")
+subset(hmap_rows, decay_cat == 1) %>% rownames_to_column("geneID") %>% write_csv("stable_decay_genes.csv")
 
 ###############################
 ## decay profile of sample genes
@@ -820,8 +824,7 @@ dev.off()
 ### Compute half-life difference between conditions
 ###############
 
-#testx <- subset(model_ids, decay_cat == 4) %>%
-	left_join(out_all)
+#testx <- subset(model_ids, decay_cat == 4) %>% left_join(out_all)
 
 test <- dabest(.data = out_all, #testx, 
 	x = Condition,
