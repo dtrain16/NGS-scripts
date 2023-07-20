@@ -385,6 +385,15 @@ cordycepin_Rec = Cordycepin_40_Rec - Cordycepin_10_EL,
 levels=design
 )
 
+pdf("scatterplot_reps.pdf")
+ggplot(data.frame(y2$counts)) + aes(x=X48, y=X85) + 
+	geom_point() +
+	theme_niwot() +
+	geom_abline(color='blue', linetype = 'dashed')+
+	coord_cartesian(xlim=c(0,10000), ylim=c(0,10000))
+dev.off()
+
+
 dge <- NULL
 
 for(i in colnames(my.contrasts)){
@@ -401,7 +410,6 @@ dge <- mutate(dge, DGE=ifelse(logFC > 0 & FDR < 0.05, yes = "Up-regulated", no=
 
 dge_out <- dge %>% subset(DGE != "Non-DGE") %>% left_join(anno, by=c("ID"))
 write_csv(dge_out, "cordycepin_dge.csv")
-
 
 pdf("PCAplots_cordycepin_RNA.pdf")
 

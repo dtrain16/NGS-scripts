@@ -123,7 +123,7 @@ cds <- subset(ens, feature == "CDS") %>%
         subset(Isoform==1) %>%
 	group_by(seqname, strand, id, feature) %>%
 	summarise(start = min(start), end = max(end) ) %>%
-	select(seqname, start, end, strand, id, feature) %>%
+	select(seqname, start, end, id, feature, strand) %>%
 	arrange(seqname, start)
 
 write.table(cds, "Arabidopsis_thaliana.TAIR10.54_cds.bed", sep='\t', row.names=F, col.names=F, quote=F)
@@ -143,14 +143,14 @@ write.table(utr, "Arabidopsis_thaliana.TAIR10.54_UTR.bed", sep='\t', row.names=F
 utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
-        select(seqname, start, end, strand, id, feature)
+        select(seqname, start, end, id, feature, strand)
 
 write.table(utr_5, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 utr_3 <- subset(ens, feature == "three_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
-        select(seqname, start, end, strand, id, feature)
+        select(seqname, start, end, id, feature, strand)
 
 write.table(utr_3, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
@@ -172,7 +172,7 @@ stop_mrna <- subset(ens, feature == "three_prime_UTR") %>%
 	mutate(start = ifelse(strand == "-", test1, test2)) %>%
 	mutate(end = ifelse(strand == "-", test2, test1)) %>%
 	mutate(feature = "stop codon") %>%
-        select(seqname, start, end, strand, id, feature)
+        select(seqname, start, end, id, feature, strand)
 
 write.table(stop_mrna, "Arabidopsis_thaliana.TAIR10.54_stop.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
