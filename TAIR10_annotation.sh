@@ -143,6 +143,8 @@ write.table(utr, "Arabidopsis_thaliana.TAIR10.54_UTR.bed", sep='\t', row.names=F
 utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
+	subset(Isoform==1) %>%
         select(seqname, start, end, id, feature, strand)
 
 write.table(utr_5, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
@@ -150,6 +152,8 @@ write.table(utr_5, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.name
 utr_3 <- subset(ens, feature == "three_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
+	mutate(Isoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
+        subset(Isoform==1) %>%
         select(seqname, start, end, id, feature, strand)
 
 write.table(utr_3, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
@@ -187,7 +191,7 @@ start_mrna <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(start = ifelse(strand == "-", test2, test1)) %>%
         mutate(end = ifelse(strand == "-", test1, test2)) %>%
         mutate(feature = "start codon") %>%
-        select(seqname, start, end, strand, id, feature)
+        select(seqname, start, end, id, feature, strand)
 
 write.table(start_mrna, "Arabidopsis_thaliana.TAIR10.54_start.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
