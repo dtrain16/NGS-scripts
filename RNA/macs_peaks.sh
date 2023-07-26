@@ -190,17 +190,17 @@ macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}plus.bam -t ${ip%%bam}plus
 macs2 callpeak --nomodel --extsize 50 -c ${input%%bam}minus.bam -t ${ip%%bam}minus.bam -f BAM -g 32542107 -n ${out}_minus -q 1e-2
 
 ## generate bedfile with strand information using .narrowpeak ($7 = enrichment, $10 distance to peak)
-awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$5,"-"}' ${out}_minus_peaks.narrowPeak > ${out}_minus_peaks.stranded.bed
+awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$5,"-"}' ${out}_minus_peaks.narrowPeak > ${out}_minus_peaks.bed
 
-awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$5,"+"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
+awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$5,"+"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.bed
 
 ## merge and sort by coordinate
-cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &
+cat ${out}_minus_peaks.bed ${out}_plus_peaks.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.bed &
 
 
 echo "cleanup"
 
-rm -v ${input%%bam}plus.bam ${input%%bam}minus.bam ${ip%%bam}plus.bam ${ip%%bam}minus.bam ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed
+rm -v ${input%%bam}plus.bam ${input%%bam}minus.bam ${ip%%bam}plus.bam ${ip%%bam}minus.bam ${out}_minus_peaks.bed ${out}_plus_peaks.bed
 
 echo "Done!"
 
