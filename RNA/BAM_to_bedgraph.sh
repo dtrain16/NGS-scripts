@@ -131,7 +131,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}.${dis}bp.bed
 
 	rm ${smp%%bam}bed ${smp%%.bam}_${out}.bed
-	
+
 fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "forward" ]] ; then

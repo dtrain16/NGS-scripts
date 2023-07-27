@@ -67,6 +67,16 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
+## genome features
+features <- subset(ens, feature == 'mRNA' | feature == "lnc_RNA" | feature == "miRNA" | feature == "ncRNA" | feature == "ncRNA_gene" | feature == "rRNA" | feature == "snoRNA" | feature == "snRNA" | feature == "tRNA") %>%
+        mutate(ID=getAttributeField(attributes, 'ID')) %>%
+	mutate(ID=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+        mutate(Isoform=sapply(strsplit(ID, "\\."), function(l) l[2])) %>%
+	mutate(Isoform=ifelse(is.na(Isoform) == T, yes = 1, no = Isoform)) %>%
+        subset(Isoform==1) %>% ## subset for primary transcript isoform
+        select(c('seqname','start','end','ID','feature','strand'))
+
+write.table(features,'Arabidopsis_thaliana.TAIR10.54_genome-features.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # all exons (including ncRNAs) based on primary isoform
 exon <- subset(ens, ens$feature == 'exon') %>%
