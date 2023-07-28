@@ -68,7 +68,7 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 ## genome features
-features <- subset(ens, feature == 'mRNA' | feature == "lnc_RNA" | feature == "miRNA" | feature == "ncRNA" | feature == "ncRNA_gene" | feature == "rRNA" | feature == "snoRNA" | feature == "snRNA" | feature == "tRNA") %>%
+features <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncRNA_gene" | feature == "rRNA" | feature == "snoRNA" | feature == "snRNA" | feature == "tRNA") %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
 	mutate(ID=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
         mutate(Isoform=sapply(strsplit(ID, "\\."), function(l) l[2])) %>%
