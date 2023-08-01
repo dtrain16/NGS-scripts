@@ -1,10 +1,11 @@
 #!/usr/bin/env Rscript
-# See BAM_to_EJC.sh to get input files ("10bp.50.bed")
-# Determine transripts with differential occupancy of EJC complex, inferred by abundance of 5'P reads 30-25 nt upstream of the 3' end of an exon.
+# See BAM_to_EJC.sh to get input files (".5p.bed")
+# Calculate 5'P reads counts 30-25 nt upstream of the 3' exon-exon junction
+# Filter to Max 5Ps within EJCs using exon annotation
 
 library(tidyverse)
 
-fls <- dir(pattern = "_10bp.5p.bed")
+fls <- dir(pattern = ".5p.bed")
 
 out <- NULL
 
@@ -38,7 +39,7 @@ test[is.na(test)] <- 0
 #y <- test[keep,]
 
 ## Count table for NB-GLMs in edgeR
-write.table(test, "ejc_rna_dxo1_counts.txt", sep='\t', quote=F, row.names=F)
+write.table(test, "ejc_counts.txt", sep='\t', quote=F, row.names=F)
 
 ### t-tests with p-value adjustment
 #y1 <-   gather(y, sample, val, -V8) %>%
