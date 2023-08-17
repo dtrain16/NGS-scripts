@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # See BAM_to_EJC.sh to get input files (".5p.bed")
 # Calculate 5'P reads counts 30-25 nt upstream of the 3' exon-exon junction
-# Filter to Max 5Ps within EJCs using exon annotation
+# Determine sum of 5P reads within EJC sites
 
 library(tidyverse)
 
