@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
 # Run on output of BAM_to_bedgraph.sh or BAM_to_bedgraph_5p.sh
-# summarise read depth across feature of interest
+# Summarise read depth across all features of interest by binned positions
 
 options(echo=T)
 library(fields)
