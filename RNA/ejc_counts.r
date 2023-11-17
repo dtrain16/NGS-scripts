@@ -34,40 +34,7 @@ test <- group_by(out, sample, V8) %>%
 
 ### NAs = 0 / no coverage
 test[is.na(test)] <- 0
-## at least 5 read ends in 2 samples
-#keep <- rowSums(test[2:5] > 4) > 1
-#y <- test[keep,]
 
 ## Count table for NB-GLMs in edgeR
 write.table(test, "ejc_counts.txt", sep='\t', quote=F, row.names=F)
-
-### t-tests with p-value adjustment
-#y1 <-   gather(y, sample, val, -V8) %>%
-#  mutate(genotype = sapply(strsplit(sample, "_"), function(l) l[1])) %>%
-#  mutate(genotype = factor(genotype, levels = c("WT", "dxo1")))
-
-## t.test for differential 5'P read depth at EJC region
-#out1 <- NULL
-
-#for(i in unique(y1$V8)){
-#	tmp1 <- subset(y1, V8 == i)
-#	fit <- lm(val ~ genotype, data=tmp1)
-#	tmp2 <- data.frame(summary(fit)$coefficients)
-#	coef <- rownames(tmp2)[2] ## coefficient for extracted stats
-#	t <- tmp2$t.value[2] ## t-value for coeff
-#	p <- tmp2$Pr...t..[2] ## p-value for coeff
-
-#tmp_out <- data.frame(id=i, coef, t, p)	
-
-#out1 <- rbind(out1, tmp_out)
-
-#}
-
-#out2 <- mutate(out1, p.adj = p.adjust(p=p, method='fdr')) %>%
-#	subset(p.adj < 0.05) %>%
-#	left_join(y, by=c("id"="V8"))
-
-## output
-#write.table(out2, "ejc_rna_dxo1_ttest.txt", sep='\t', quote=F, row.names=F)
-
 

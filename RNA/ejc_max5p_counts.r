@@ -28,7 +28,7 @@ out <- rbind(input,out)
 }
 
 test <- group_by(out, sample, V8) %>%
-	## sum read end depth across EJC window
+	## get maximum 5'P end depth within EJC window
 	summarise(max5p = max(val)) %>%
 	spread(sample, max5p)
 

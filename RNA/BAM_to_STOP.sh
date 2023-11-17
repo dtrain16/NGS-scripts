@@ -16,7 +16,7 @@ if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
 echo "USAGE: BAM_to_STOP.sh <.BAM> <strandedness> <bedfile annotation> <feature name>"
 echo "strandedness = unstranded or  forward"
-echo "EXAMPLE: BAM_to_STOP.sh col0_rep1.sorted.bam unstranded Arabidopsis_thaliana.TAIR10.54_exon.bed exon"
+echo "EXAMPLE: BAM_to_STOP.sh col0_rep1.sorted.bam unstranded Arabidopsis_thaliana.TAIR10.54_stop.bed stop"
 echo "annotation should be start or stop codons, manually calculated from TAIR10 Ensembl UTR annotations"
 exit 1
 fi

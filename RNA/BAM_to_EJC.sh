@@ -37,7 +37,7 @@ if [[ "$str"  == "unstranded" ]] ; then
 	echo "BAM to bed..."
 	bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
-	awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_10bp.5p.bed 
+	awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_10bp.5p.bed 
 
 	echo 'do maths'
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.5p.bed
@@ -62,12 +62,12 @@ if [[ "$str"  == "forward" ]] ; then
 	# minus strand
 	bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.minus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_10bp.minus.5p.bed
+        awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_10bp.minus.5p.bed
 
 	# plus strand
 	bedtools genomecov -bg -5 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.plus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' '$NF<10 && $NF>-10' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_10bp.plus.5p.bed
+        awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_10bp.plus.5p.bed
 
 	echo 'do maths'
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.minus.5p.bed
