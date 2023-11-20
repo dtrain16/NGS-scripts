@@ -27,12 +27,12 @@ stop_5p <- mutate(input, sum_reads = stop_5p_sum$reads[match(V8, stop_5p_sum$V8)
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
 sum_stop_5p <- group_by(stop_5p, pos) %>% 
-	summarise(sum_norm_reads = sum(norm_reads)) %>% 
+	summarise(sum_norm_reads = sum(norm_reads), raw_counts = sum(V4)) %>% 
 	mutate(total_reads = sum(sum_norm_reads)) %>% 
 	mutate(rel_freq = sum_norm_reads/total_reads) %>%
-	select(pos, sum_norm_reads, rel_freq)
+	select(pos, raw_counts, sum_norm_reads, rel_freq)
 
-# name output file
+# name output filea
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
 
 ## diagnostic plot on single sample
