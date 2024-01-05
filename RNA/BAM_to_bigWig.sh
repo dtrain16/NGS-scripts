@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-# Produce coverage data from BAM files for RNA-seq or ChIP data in bedgraph format
+# Produce scaled coverage data (in RPM) from BAM files in bedgraph format.
 # Then produce bigWigs files for viewing delight
 # Run in directory with sam converted, sorted, indexed  bam file
 # Ensure genome index genome & chromosome sizes are prepared:
@@ -24,6 +24,7 @@ smp=$1
 lay=$2
 str=$3
 chrc_sizes=$4
+scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)")
 
 echo ""
 echo "sample = $1"
@@ -38,10 +39,10 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
 	echo "BAM to bedgraph ..."
 	# unstranded bedgraph
-	bedtools genomecov -bga -split -ibam $smp > ${smp%%bam}bg
+	bedtools genomecov -bga -split -scale $scl -ibam $smp > ${smp%%bam}bg
 
 	# bg to bigWig
-	echo "bigWig ..."
+	echo "bigWigigWig ..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
 	rm ${smp%%bam}bg
@@ -58,9 +59,9 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
 	echo "BAM to stranded bedgraphs ..."
 	# reverse/minus bg
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# forward/plus bg
-	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -scale $scl -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 	
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes} ${smp%%bam}plus.bigWig
@@ -78,12 +79,12 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# reverse strand
 	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
 	# forward strand
-	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
+	Samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
 	echo "BAM to stranded bedgraphs ..."
 	# reverse/plus bg
-	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -scale $scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# forward/minus bg
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
@@ -101,7 +102,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	
 	echo "BAM to bedgraph ..."
 	# unstranded bedgraph
-	bedtools genomecov -bga -split -ibam $smp > ${smp%%bam}bg
+	bedtools genomecov -bga -split -scale $scl -ibam $smp > ${smp%%bam}bg
 
 	# bg to bigWig
 	echo "bigWig ..."
@@ -136,9 +137,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -scale ${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
@@ -173,9 +174,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bga -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -scale ${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# minus strand
-	bedtools genomecov -bga -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
