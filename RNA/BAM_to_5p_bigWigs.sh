@@ -14,13 +14,17 @@ set -eu
 
 if [ "$#" -lt 2 ]; then
 echo "Missing arguments!"
-echo "USAGE: BAM_to_5p_bigWig.sh <BAM> <chr_sizes>"
-echo "EXAMPLE: BAM_to_5p_bigWig.sh col0-r1.bam TAIR10_Chr.all.fasta.len"
+echo "USAGE: BAM_to_5p_bigWig.sh <BAM> <layout> <chr_sizes>"
+echo "EXAMPLE: BAM_to_5p_bigWig.sh col0-r1.bam SE TAIR10_Chr.all.fasta.len"
 exit 1
 fi
 
 smp=$1
-chrc_sizes=$2
+lay=$2
+chrc_sizes=$3
+
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)"); fi
 
 echo ""
 echo "sample = $1"
@@ -32,7 +36,7 @@ echo ""
 
 echo "BAM to bedgraph ..."
 # unstranded bedgraph counting only 5p read end
-bedtools genomecov -bga -5 -ibam $smp > ${smp%%bam}5p.bg
+bedtools genomecov -bga -5 -scale $scl -ibam $smp > ${smp%%bam}5p.bg
 
 # bg to bigWig
 echo "bigWig ..."

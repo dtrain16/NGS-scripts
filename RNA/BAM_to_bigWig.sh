@@ -24,7 +24,9 @@ smp=$1
 lay=$2
 str=$3
 chrc_sizes=$4
-scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)")
+
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)"); fi
 
 echo ""
 echo "sample = $1"
