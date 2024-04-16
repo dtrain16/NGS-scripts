@@ -39,6 +39,12 @@ sample_info <- data.frame(
   )
 )
 
+#- save sample information table ----------------------------------------------# 
+write.table(
+  sample_info, 
+  file.path(working_directory, "sample_info.txt")
+)
+
 #- display sample information table -------------------------------------------#
 knitr::kable(sample_info, row.names = FALSE)
 
