@@ -103,9 +103,10 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 cd_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
+	mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
         mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
         mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
-        mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
+        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
 	subset(Isoform==1) %>% ## subset for primary transcript isoform
 	subset(Transcript %in% mRNA$Name) %>%
         select(seqname,start,end,Name,score,strand) %>%

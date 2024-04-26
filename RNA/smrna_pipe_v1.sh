@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eu
 
-# Read alignment for PARE libraries with STAR
-# SE only, trim adatpers and low quality basecalls (reduce length cutoff for trimming), map reads up to 20 bp length with 0 mismatches using STAR.
+# Read alignment for smRNA-seq libraries with STAR
+# SE only, trim adapters and low quality bases (remove length cutoff for trimming), trim reads to first 25 bp. Map with STAR with 0 mismatches and min mapped length 17.
 
 # Retrieve TAIR10 reference and prepare STAR index
 # wget ftp://ftp.ensemblgenomes.org/pub/release-47/plants/fasta/arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
@@ -21,8 +21,8 @@ set -eu
 
 if [ "$#" -lt 3 ]; then
 echo "Missing required arguments!"
-echo "USAGE: pare_pipe_v1.sh <fastq R1> </path/to/index> <fileID>"
-echo "EXAMPLE: pare_pipe_v1.sh sample.fastq /home/dganguly/ref_seqs/STAR/TAIR10/GenomeDir sample_rep1"
+echo "USAGE: smrna_pipe_v1.sh <fastq R1> </path/to/index> <fileID>"
+echo "EXAMPLE: smrna_pipe_v1.sh sample.fastq /home/dganguly/ref_seqs/STAR/TAIR10/GenomeDir sample_rep1"
 exit 1
 fi
 
@@ -41,9 +41,9 @@ echo "Time of analysis: $dow"
 echo "##################"
 
 # make sample work directory
-mkdir ${fileID}_pare_${dow}
-mv $fq ${fileID}_pare_${dow}
-cd ${fileID}_pare_${dow}
+mkdir ${fileID}_srna_${dow}
+mv $fq ${fileID}_srna_${dow}
+cd ${fileID}_srna_${dow}
 
 # gzip if unzipped input file
 if [[ $fq != *.gz ]];then gzip $fq; fq="${fq}.gz"; fi
@@ -54,10 +54,10 @@ fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Read trimming... "
-# Trim_galore: remove adapters and low quality base-calls, retain reads as small as 10 bp, generate fastqc report on trimmed reads.
+# Trim_galore: remove adapters and low quality base-calls, retain reads as small as 15 bp, generate fastqc report on trimmed reads.
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --length 10 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --length 15 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -69,10 +69,10 @@ mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq.gz -t 3_align/
 cd 3_align
 echo "Beginning alignment ..."
 
-zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 20 -o ${fq%%.fastq}.20bp.trimmed.fq.gz
-input=${fq%%.fastq}.20bp.trimmed.fq.gz
+zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 25 -o ${fq%%.fastq}.25bp.trimmed.fq.gz
+input=${fq%%.fastq}.25bp.trimmed.fq.gz
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 17 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
