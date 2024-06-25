@@ -71,7 +71,7 @@ echo "Read trimming... "
 # read trimming with trimgalore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --length 10 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -89,7 +89,7 @@ echo "Beginning alignment ..."
 
 if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.5 --outFilterMatchNminOverLread 0.5 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
@@ -151,7 +151,7 @@ echo ""
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --fastqc --fastqc_args "-t 8" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --length 10 --fastqc --fastqc_args "-t 8" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
@@ -173,7 +173,7 @@ cd 3_align/
 if [[ $fq1 == *"fq.gz" ]]; then input1=${fq1%%.fq*}_val_1.fq*; else input1=${fq1%%.fastq*}_val_1.fq*; fi
 if [[ $fq1 == *"fq.gz" ]]; then input2=${fq2%%.fq*}_val_2.fq*; else input2=${fq1%%.fastq*}_val_2.fq*; fi
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input1 $input2 --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.5 --outFilterMatchNminOverLread 0.5 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input1 $input2 --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 

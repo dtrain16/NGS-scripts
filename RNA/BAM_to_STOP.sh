@@ -40,7 +40,7 @@ if [[ "$str"  == "unstranded" ]] ; then
 	echo "BAM to bed..."
 	bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
-	awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
+	awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
 
 	echo 'do maths'
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.5p.bed
@@ -65,12 +65,12 @@ if [[ "$str"  == "forward" ]] ; then
 	# minus strand
 	bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.minus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
+        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
 
 	# plus strand
 	bedtools genomecov -bg -5 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.plus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
+        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
 
 	echo 'do maths'
 	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
@@ -97,12 +97,12 @@ if [[ "$str"  == "reverse" ]] ; then
         # minus strand
         bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.minus.5p.bed
         closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
+        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
 
         # plus strand
         bedtools genomecov -bg -5 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.plus.5p.bed
         closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
+        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
 
         echo 'do maths'
         Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed

@@ -54,25 +54,27 @@ fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Read trimming... "
-# Trim_galore: remove adapters and low quality base-calls, retain reads as small as 15 bp, generate fastqc report on trimmed reads.
+# Trim_galore: remove adapters and low quality base-calls, set to small rna mode (min length 15 nt, max length 25 nt), generate fastqc report on trimmed reads.
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --length 15 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --small_rna --max_length 25 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
 mv $fq 0_fastq
 
-# STAR alignment: trim reads to 25 bp max, align to STAR with 0 mismatches and minimum mapped length 17 bp.
+## prep folder for STAR alignment
 mkdir 3_align
 mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq.gz -t 3_align/
 cd 3_align
 echo "Beginning alignment ..."
 
-zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 25 -o ${fq%%.fastq}.25bp.trimmed.fq.gz
-input=${fq%%.fastq}.25bp.trimmed.fq.gz
+# trim reads to 25 bp max
+#zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 25 -o ${fq%%.fastq}.25bp.trimmed.fq.gz
+#input=${fq%%.fastq}.25bp.trimmed.fq.gz
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 17 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+# STAR alignment: 0 mismatches, min mapped length 18 nt, reduced mapping score vs read length
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 18 --outFilterScoreMinOverLread 0.3 --outFilterMatchNminOverLread 0.3 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 

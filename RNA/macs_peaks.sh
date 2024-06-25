@@ -61,7 +61,7 @@ awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_minus_pe
 awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
 
 ## merge and sort by coordinate
-cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &
+cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed 
 
 echo "cleanup"
 
@@ -101,7 +101,7 @@ awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_minus_pe
 awk 'BEGIN {OFS="\t";FS="\t"} $ awk {print $1,$2,$3,$4,$5, "-"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.stranded.bed
 
 ## merge and sort by coordinate
-cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed &
+cat ${out}_minus_peaks.stranded.bed ${out}_plus_peaks.stranded.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.strand.bed
 
 echo "cleanup"
 
@@ -195,8 +195,7 @@ awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$7,"-"}' ${out}_minus_peaks.narrowPeak 
 awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$7,"+"}' ${out}_plus_peaks.narrowPeak > ${out}_plus_peaks.bed
 
 ## merge and sort by coordinate
-cat ${out}_minus_peaks.bed ${out}_plus_peaks.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.bed &
-
+cat ${out}_minus_peaks.bed ${out}_plus_peaks.bed | sort -k1,1 -k2,2n > ${out}_merged_peaks.bed
 
 echo "cleanup"
 
