@@ -69,10 +69,6 @@ mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq.gz -t 3_align/
 cd 3_align
 echo "Beginning alignment ..."
 
-# trim reads to 25 bp max
-#zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 25 -o ${fq%%.fastq}.25bp.trimmed.fq.gz
-#input=${fq%%.fastq}.25bp.trimmed.fq.gz
-
 # STAR alignment: 0 mismatches, min mapped length 18 nt, reduced mapping score vs read length
 STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 18 --outFilterScoreMinOverLread 0.3 --outFilterMatchNminOverLread 0.3 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 

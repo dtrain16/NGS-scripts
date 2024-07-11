@@ -63,15 +63,16 @@ cd ../
 mkdir 0_fastq
 mv $fq 0_fastq
 
-# STAR alignment: trim reads to 25 bp max, align to STAR with 0 mismatches and minimum mapped length 17 bp.
 mkdir 3_align
 mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq.gz -t 3_align/
 cd 3_align
 echo "Beginning alignment ..."
 
+# discard sequences shorter than 20 nucleotides
 zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 20 -o ${fq%%.fastq}.20bp.trimmed.fq.gz
 input=${fq%%.fastq}.20bp.trimmed.fq.gz
 
+# align using STAR allowing 0 mismatches
 STAR --runThreadN 8 --outFilterMismatchNmax 0 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."

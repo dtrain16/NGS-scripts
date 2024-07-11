@@ -28,7 +28,7 @@ exon_3p_sum <- subset(input, pos < 0 & pos > -51) %>%
 exon_3p <- subset(input, pos < 0 & pos > -51) %>%
 	mutate(sum_reads = exon_3p_sum$reads[match(V8, exon_3p_sum$V8)]) %>%
 	mutate(norm_reads = V4/sum_reads) %>%
-	subset(abs(sum_reads) > 1)
+	subset(abs(sum_reads) > 9)
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
 sum_exon_3p <- group_by(exon_3p, pos) %>% 
