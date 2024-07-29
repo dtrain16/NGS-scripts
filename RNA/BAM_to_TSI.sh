@@ -31,7 +31,7 @@ closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_stop.5p.bed
 awk -F$'\t' '$NF<1 && $NF>-101' ${smp%%.bam}_stop.5p.bed > ${smp%%.bam}_stop_TSI.5p.bed 
 
 echo 'do maths'
-#Rscript /home/dganguly/scripts/RNA/TSI_calculation.r ${smp%%.bam}_stop_TSI.5p.bed
+Rscript /home/dganguly/scripts/RNA/TSI_calculation.r ${smp%%.bam}_stop_TSI.5p.bed
 
 echo 'cleaning'
 rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_stop.5p.bed

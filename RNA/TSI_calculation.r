@@ -17,27 +17,28 @@ input <- read.delim(args[1],head=F) %>%
 	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3)) %>%
 	subset(pos > -101 & pos < 1)
 
-# sum all reads in 50 nt window upstream of 3' end
+# get total end counts in window
 stop_5p_sum <- group_by(input, V8) %>%
-	summarise(reads=sum(V4))
-
-# normalise depth per nt by sum of reads across window
-stop_5p <- mutate(input, sum_reads = stop_5p_sum$reads[match(V8, stop_5p_sum$V8)]) %>%
-	subset(abs(sum_reads) > 9)
+	summarise(avg_frame=mean(V4), total_counts=sum(V4))
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
-a1 <- group_by(stop_5p, V8) %>% 
+a1 <- group_by(input, V8) %>% 
 	subset(pos == -16 | pos == -17) %>%
-	summarise(raw_counts = mean(V4)) 
+	summarise(ctrd_counts = mean(V4)) %>%
+	mutate(avg_frame = stop_5p_sum$avg_frame[match(V8, stop_5p_sum$V8)]) %>%
+	mutate(total_counts = stop_5p_sum$total_counts[match(V8, stop_5p_sum$V8)]) %>%
+	subset(total_counts > 9) %>%
+	mutate(tsi = ctrd_counts/avg_frame)
 
 # name output filea
-name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
+name <- sapply(strsplit(as.character(args[1]),'Aligned'), function(l) l[1])
 
 ## diagnostic plot on single sample
-pdf(paste0(name,".stop.pdf"))
-plot(y=sum_stop_5p$rel_freq, x= sum_stop_5p$pos)
+pdf(paste0(name,"_TSI.pdf"))
+plot(y=log2(a1$ctrd_counts), x=log2(a1$avg_frame))
+abline(a=0, b=1)
 dev.off()
 
 ## output
-write.table(sum_stop_5p, paste0(name,".stop.txt"), sep='\t', quote=F, row.names=F)
+write.table(a1, paste0(name,"_TSI.txt"), sep='\t', quote=F, row.names=F)
 
