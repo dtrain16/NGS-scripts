@@ -15,19 +15,19 @@ input <- read.delim(args[1],head=F) %>%
 	subset(V1 != 'ChrM' & V1 != 'ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
 # calculate position relative to first base of stop codon
 	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3)) %>%
-	subset(pos > -101 & pos < 1)
+	subset(pos > -100 & pos < 1)
 
 # get total end counts in window
 stop_5p_sum <- group_by(input, V8) %>%
-	summarise(avg_frame=mean(V4), total_counts=sum(V4))
+	summarise(avg_frame=mean(V4), avg_frame_true=sum(V4)/100, total_counts=sum(V4))
 
 # Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
 a1 <- group_by(input, V8) %>% 
 	subset(pos == -16 | pos == -17) %>%
-	summarise(ctrd_counts = mean(V4)) %>%
+	summarise(avg_ctrd = mean(V4), avg_ctrd_true = sum(V4)/2) %>%
 	mutate(avg_frame = stop_5p_sum$avg_frame[match(V8, stop_5p_sum$V8)]) %>%
 	mutate(total_counts = stop_5p_sum$total_counts[match(V8, stop_5p_sum$V8)]) %>%
-	subset(total_counts > 9) %>%
+	subset(total_counts >= 20) %>%
 	mutate(tsi = ctrd_counts/avg_frame)
 
 # name output filea
