@@ -23,9 +23,6 @@ smp=$1
 lay=$2
 chrc_sizes=$3
 
-if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -c $smp)"); fi
-if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)"); fi
-
 echo ""
 echo "sample = $1"
 echo "chr_size = $2"
@@ -34,13 +31,30 @@ echo "Produce bigWig file(s) for 5p read ends from $smp ..."
 echo ""
 
 
+if [[ "$lay" == "SE" ]] ; then 
+
+scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)")
+
 echo "BAM to bedgraph ..."
 # unstranded bedgraph counting only 5p read end
-bedtools genomecov -bga -5 -scale $scl -ibam $smp > ${smp%%bam}5p.bg
+bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
 
-# bg to bigWig
+fi
+
+if [[ "$lay" == "PE" ]] ; then
+
+scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -f 2 -c $smp)")
+
+echo "BAM to bedgraph ..."
+# unstranded bedgraph counting only 5p read end
+bedtools genomecov -pc -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
+
+fi
+
+# convert bedgraph to bigWig
 echo "bigWig ..."
 $HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 rm ${smp%%bam}5p.bg
+
 

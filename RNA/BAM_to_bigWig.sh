@@ -25,8 +25,8 @@ lay=$2
 str=$3
 chrc_sizes=$4
 
-if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -c $smp)"); fi
-if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -f 1 -c $smp)"); fi
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -f 2 -c $smp)"); fi
 
 echo ""
 echo "sample = $1"
@@ -104,7 +104,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	
 	echo "BAM to bedgraph ..."
 	# unstranded bedgraph
-	bedtools genomecov -bga -split -scale $scl -ibam $smp > ${smp%%bam}bg
+	bedtools genomecov -bga -pc -split -scale $scl -ibam $smp > ${smp%%bam}bg
 
 	# bg to bigWig
 	echo "bigWig ..."
@@ -139,9 +139,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
-	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -pc -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# plus strand
-	bedtools genomecov -bga -split -scale ${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -pc -split -scale ${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
@@ -176,9 +176,9 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bga -split -scale ${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -pc -split -scale ${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# minus strand
-	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -pc -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
