@@ -27,7 +27,7 @@ a1 <- group_by(input, V8) %>%
 	summarise(avg_ctrd = mean(V4), avg_ctrd_true = sum(V4)/2) %>%
 	mutate(avg_frame = stop_5p_sum$avg_frame[match(V8, stop_5p_sum$V8)]) %>%
 	mutate(total_counts = stop_5p_sum$total_counts[match(V8, stop_5p_sum$V8)]) %>%
-	#subset(total_counts >= 20) %>%
+	subset(total_counts >= 20) %>%
 	mutate(tsi = avg_ctrd/avg_frame)
 
 # name output filea
