@@ -27,15 +27,15 @@ a1 <- group_by(input, V8) %>%
 	summarise(avg_ctrd = mean(V4), avg_ctrd_true = sum(V4)/2) %>%
 	mutate(avg_frame = stop_5p_sum$avg_frame[match(V8, stop_5p_sum$V8)]) %>%
 	mutate(total_counts = stop_5p_sum$total_counts[match(V8, stop_5p_sum$V8)]) %>%
-	subset(total_counts >= 20) %>%
-	mutate(tsi = ctrd_counts/avg_frame)
+	#subset(total_counts >= 20) %>%
+	mutate(tsi = avg_ctrd/avg_frame)
 
 # name output filea
 name <- sapply(strsplit(as.character(args[1]),'Aligned'), function(l) l[1])
 
 ## diagnostic plot on single sample
 pdf(paste0(name,"_TSI.pdf"))
-plot(y=log2(a1$ctrd_counts), x=log2(a1$avg_frame))
+plot(y=log2(a1$avg_ctrd), x=log2(a1$avg_frame))
 abline(a=0, b=1)
 dev.off()
 
