@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
-# Runs with BAM_to_TSI.sh
-# Calculate terminal stalling index from 5'P end counts surrounding the stop codon
+# Run on output of BAM_to_STOP.sh
+# Calculate EJC stalling index from 5'P end counts upstream of exon-exon junctions
 
 options(echo=T)
 library(fields)
@@ -13,9 +13,11 @@ print(args)
 input <- read.delim(args[1],head=F) %>% 
 # Remove reads to plastid and mitochondria
 	subset(V1 != 'ChrM' & V1 != 'ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
-# calculate position relative to first base of stop codon
-	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3)) %>%
-	subset(pos > -100 & pos < 1)
+#exon at least 50 nucleotides
+	mutate(length = V7 - V6) %>%
+        subset(length > 49) %>%
+# calculate position relative to 3' end of feature
+        mutate(pos = ifelse(V10 == "+", V2-V7, V6-V3))
 
 # get total end counts in window
 stop_5p_sum <- group_by(input, V8) %>%

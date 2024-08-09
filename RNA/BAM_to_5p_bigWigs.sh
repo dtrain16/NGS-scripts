@@ -25,7 +25,8 @@ chrc_sizes=$3
 
 echo ""
 echo "sample = $1"
-echo "chr_size = $2"
+echo "layout = $2"
+echo "chr_size = $3"
 echo ""
 echo "Produce bigWig file(s) for 5p read ends from $smp ..."
 echo ""
@@ -33,7 +34,7 @@ echo ""
 
 if [[ "$lay" == "SE" ]] ; then 
 
-scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)")
+scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -F 4 -c $smp)")
 
 echo "BAM to bedgraph ..."
 # unstranded bedgraph counting only 5p read end
@@ -47,7 +48,7 @@ scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -f 2 -c $smp)")
 
 echo "BAM to bedgraph ..."
 # unstranded bedgraph counting only 5p read end
-bedtools genomecov -pc -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
+bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
 
 fi
 
