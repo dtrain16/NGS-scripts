@@ -34,21 +34,24 @@ echo ""
 
 if [[ "$lay" == "SE" ]] ; then 
 
-scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -F 4 -c $smp)")
+reads=$(samtools view -F 260 -c $smp)
+scaling_factor=$(bc <<< "scale=6;1000000/$reads")
 
 echo "BAM to bedgraph ..."
-# unstranded bedgraph counting only 5p read end
+# unstranded bedgraph of only 5p read end
 bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
 
 fi
 
 if [[ "$lay" == "PE" ]] ; then
 
-scaling_factor=$(bc <<< "scale=6;1000000/$(samtools view -f 2 -c $smp)")
+reads=$(samtools view -F 260 -c $smp)
+frags=$(expr $reads / 2)
+scaling_factor=$(bc <<< "scale=6;1000000/$frags")
 
 echo "BAM to bedgraph ..."
-# unstranded bedgraph counting only 5p read end
-bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
+# RPM
+bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.rpm.bg
 
 fi
 
