@@ -51,7 +51,7 @@ scaling_factor=$(bc <<< "scale=6;1000000/$frags")
 
 echo "BAM to bedgraph ..."
 # RPM
-bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.rpm.bg
+bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
 
 fi
 
