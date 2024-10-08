@@ -12,7 +12,7 @@ set -u
 # conda install -n ngs_plots -c r r-tidyverse
 # conda activate ngs_plots
 
-if [ "$#" -lt 5 ]; then
+if [ "$#" -lt 6 ]; then
 echo "Missing arguments!"
 echo "USAGE: BAM_to_STOP.sh <.BAM> <strandedness> <bedfile annotation> <feature name> <distance>"
 echo "strandedness = unstranded, reverse, or  forward"
@@ -22,23 +22,30 @@ exit 1
 fi
 
 smp=$1
-str=$2
-bedfile=$3
-out=$4
-dis=$5
+lay=$2
+str=$3
+bedfile=$4
+out=$5
+dis=$6
 
 echo ""
 echo "sample = $1"
-echo "strand = $2"
-echo "bedfile = $3"
-echo "feature = $4"
-echo "distance = $5"
+echo "layout = $2"
+echo "strand = $3"
+echo "bedfile = $4"
+echo "feature = $5"
+echo "distance = $6"
 echo ""
+
+echo "calculate scaling factor"
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)/2"); fi
+
 
 if [[ "$str"  == "unstranded" ]] ; then 
 
 	echo "BAM to bed..."
-	bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
+	bedtools genomecov -bg -5 -scale $scl -ibam $smp > ${smp%%.bam}.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
 	awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
 
@@ -63,12 +70,12 @@ if [[ "$str"  == "forward" ]] ; then
 	
 	echo "BAM to bedgraphs at exons ..."
 	# minus strand
-	bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.minus.5p.bed
+	bedtools genomecov -bg -5 -scale -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.minus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
         awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
 
 	# plus strand
-	bedtools genomecov -bg -5 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.plus.5p.bed
+	bedtools genomecov -bg -5 -scale $scl -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.plus.5p.bed
 	closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
         awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
 
@@ -95,12 +102,12 @@ if [[ "$str"  == "reverse" ]] ; then
 	
         echo "BAM to bedgraphs at exons ..."
         # minus strand
-        bedtools genomecov -bg -5 -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.minus.5p.bed
+        bedtools genomecov -bg -5 -scale -$scl -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.minus.5p.bed
         closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
         awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
 
         # plus strand
-        bedtools genomecov -bg -5 -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.plus.5p.bed
+        bedtools genomecov -bg -5 -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.plus.5p.bed
         closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
         awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
 
