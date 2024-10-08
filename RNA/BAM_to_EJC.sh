@@ -12,27 +12,32 @@ set -u
 # conda install -n ngs_plots -c r r-tidyverse
 # conda activate ngs_plots
 
-if [ "$#" -lt 4 ]; then
+if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
-echo "USAGE: BAM_to_EJC.sh <.BAM> <bedfile annotation> <feature name>"
+echo "USAGE: BAM_to_EJC.sh <.BAM> <layout: SE/PE> <bedfile annotation> <feature name>"
 echo "treat as unstranded only (degradome)"
-echo "EXAMPLE: BAM_to_EJC.sh col0_rep1.sorted.bam Arabidopsis_thaliana.TAIR10.54_exon.bed exon"
+echo "EXAMPLE: BAM_to_EJC.sh col0_rep1.sorted.bam PE Arabidopsis_thaliana.TAIR10.54_exon.bed exon"
 exit 1
 fi
 
 smp=$1
-bedfile=$2
-out=$3
+lay=$2
+bedfile=$3
+out=$4
 
 echo ""
 echo "sample = $1"
-echo "strand = unstranded"
-echo "bedfile = $2"
-echo "feature = $3"
+echo "layout = $2"
+echo "bedfile = $3"
+echo "feature = $4"
 echo ""
 
+echo "calculate scaling factor"
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)/2"); fi
+
 echo "BAM to bed..."
-bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
+bedtools genomecov -bg -5 -scale $scl -ibam $smp > ${smp%%.bam}.5p.bed
 closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
 awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_10bp.5p.bed 
 
