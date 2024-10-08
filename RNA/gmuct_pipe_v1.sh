@@ -14,9 +14,8 @@ set -eu
 ### CONDA environment is installed
 # conda create --name <name>
 # conda install -n <name> -c bioconda fastqc
+# conda install -n <name> -c bioconda cutadapt
 # conda install -n <name> -c bioconda star
-# conda install -n <name> -c bioconda bedtools
-# conda install -c bioconda fastx_toolkit
 
 if [ "$#" -lt 4 ]; then
 echo "Missing required arguments!"
@@ -89,7 +88,7 @@ echo "Beginning alignment ..."
 
 if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
@@ -173,7 +172,7 @@ cd 3_align/
 if [[ $fq1 == *"fq.gz" ]]; then input1=${fq1%%.fq*}_val_1.fq*; else input1=${fq1%%.fastq*}_val_1.fq*; fi
 if [[ $fq1 == *"fq.gz" ]]; then input2=${fq2%%.fq*}_val_2.fq*; else input2=${fq1%%.fastq*}_val_2.fq*; fi
 
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input1 $input2 --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input1 $input2 --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
