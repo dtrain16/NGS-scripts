@@ -54,8 +54,9 @@ fi
 
 # -C - Do not count read pairs matching different chromosomes
 # -f - Perform read counting at feature level (e.g. exons vs genes)
-# -t - Specify meta-feature
+# -t - Specify feature
 # -g - Specify attribute
-# -O - Keep reads assigned to multiple meta-features
+# -O - Keep reads assigned to multiple features
+# -p - paired-end reads, count fragments
 
 echo "DONE"
