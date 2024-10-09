@@ -70,7 +70,7 @@ echo "Read trimming... "
 # read trimming with trimgalore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --length 10 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --length 10 --cores 8 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -150,7 +150,7 @@ echo ""
 # adapter and quality trimming with trim_galore
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --length 10 --fastqc --fastqc_args "-t 8" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --length 10 --cores 8 --fastqc --fastqc_args "-t 8" --paired ../$fq1 ../$fq2 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 cd ../
 
 mkdir 0_fastq
