@@ -35,7 +35,7 @@ gffRead <- function(gffFile, nrows = -1) {
      return(gff)
 }
 
-ens <- gffRead('Arabidopsis_thaliana.TAIR10.54.gff3')
+ens <- gffRead('Arabidopsis_thaliana.TAIR10.59.gff3')
 
 # Chromosome annotation
 chr <- subset(ens,ens$feature=='chromosome') %>%
@@ -47,7 +47,7 @@ gene <- subset(ens, ens$feature == 'gene') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(gene,'Arabidopsis_thaliana.TAIR10.54_gene.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(gene,'Arabidopsis_thaliana.TAIR10.59_gene.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # mRNA annotation
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -55,7 +55,7 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 	mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	select(c('seqname','start','end','Name','score','strand'))
 
-write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # mRNA annotation - primary isoform only
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -65,7 +65,7 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 	subset(Isoform==1) %>%
         select(c('seqname','start','end','Name','score','strand'))
 
-write.table(mRNA,'Arabidopsis_thaliana.TAIR10.54_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 ## genome features
 ncrna <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncRNA" | feature == "rRNA" | feature == "snoRNA" | feature == "snRNA" | feature == "tRNA" ) %>%
@@ -76,7 +76,7 @@ ncrna <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncR
         subset(Isoform==1) %>% ## subset for primary transcript isoform
         select(c('seqname','start','end','ID','feature','strand'))
 
-write.table(ncrna,'Arabidopsis_thaliana.TAIR10.54_ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(ncrna,'Arabidopsis_thaliana.TAIR10.59_ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # all exons (including ncRNAs) based on primary isoform
 exon <- subset(ens, ens$feature == 'exon') %>%
@@ -86,13 +86,13 @@ exon <- subset(ens, ens$feature == 'exon') %>%
         subset(Isoform==1) %>% ## subset for primary transcript isoform
         select(c('seqname','start','end','Name','score','strand'))
 
-write.table(exon,'Arabidopsis_thaliana.TAIR10.54_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(exon,'Arabidopsis_thaliana.TAIR10.59_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 exon1 <- mutate(exon, test = sapply(strsplit(Name, "\\."), function(l) l[3])) %>%
         subset(test == "exon1") %>%
         select(-test)
 
-write.table(exon1,'Arabidopsis_thaliana.TAIR10.54_exon1.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(exon1,'Arabidopsis_thaliana.TAIR10.59_exon1.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # exon from mRNAs for primary isoform
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -112,7 +112,7 @@ cd_exon <- subset(ens, ens$feature == 'exon') %>%
         select(seqname,start,end,Name,score,strand) %>%
 	unique
 
-write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.59_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # exon from ncRNA
 nc_exon <- subset(ens, ens$feature == 'exon') %>%
@@ -124,7 +124,7 @@ nc_exon <- subset(ens, ens$feature == 'exon') %>%
         subset(!(Transcript %in% mRNA$Name)) %>%
         select(c('seqname','start','end','Name','score','strand'))
 
-write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.54_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.59_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 ## CDS annotation
 
@@ -138,7 +138,7 @@ cds <- subset(ens, feature == "CDS") %>%
 	select(seqname, start, end, id, feature, strand) %>%
 	arrange(seqname, start)
 
-write.table(cds, "Arabidopsis_thaliana.TAIR10.54_cds.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(cds, "Arabidopsis_thaliana.TAIR10.59_cds.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 # UTR annotation
 utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %>%
@@ -148,7 +148,7 @@ utr <- subset(ens, feature == "five_prime_UTR" | feature == "three_prime_UTR") %
         subset(Isoform==1) %>%
 	select(seqname, start, end, strand, id, feature)
 
-write.table(utr, "Arabidopsis_thaliana.TAIR10.54_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(utr, "Arabidopsis_thaliana.TAIR10.59_UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 ## separate UTRs
 
@@ -159,7 +159,7 @@ utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
 	subset(Isoform==1) %>%
         select(seqname, start, end, id, feature, strand)
 
-write.table(utr_5, "Arabidopsis_thaliana.TAIR10.54_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(utr_5, "Arabidopsis_thaliana.TAIR10.59_5UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 utr_3 <- subset(ens, feature == "three_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
@@ -168,7 +168,7 @@ utr_3 <- subset(ens, feature == "three_prime_UTR") %>%
         subset(Isoform==1) %>%
         select(seqname, start, end, id, feature, strand)
 
-write.table(utr_3, "Arabidopsis_thaliana.TAIR10.54_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(utr_3, "Arabidopsis_thaliana.TAIR10.59_3UTR.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 # start and STOP codon for primary mRNA isoform
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
@@ -190,7 +190,7 @@ stop_mrna <- subset(ens, feature == "three_prime_UTR") %>%
 	mutate(feature = "stop codon") %>%
         select(seqname, start, end, id, feature, strand)
 
-write.table(stop_mrna, "Arabidopsis_thaliana.TAIR10.54_stop.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(stop_mrna, "Arabidopsis_thaliana.TAIR10.59_stop.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 start_mrna <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
@@ -205,7 +205,7 @@ start_mrna <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(feature = "start codon") %>%
         select(seqname, start, end, id, feature, strand)
 
-write.table(start_mrna, "Arabidopsis_thaliana.TAIR10.54_start.bed", sep='\t', row.names=F, col.names=F, quote=F)
+write.table(start_mrna, "Arabidopsis_thaliana.TAIR10.59_start.bed", sep='\t', row.names=F, col.names=F, quote=F)
 
 quit()
 n
@@ -213,7 +213,7 @@ n
 ########################
 ## use bedtools getfasta to obtain UTR sequences > 10 bp
 ####################
-bedtools getfasta -bedOut -s -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -bed Arabidopsis_thaliana.TAIR10.54_UTR.bed > TAIR10_UTR_seq.bed
+bedtools getfasta -bedOut -s -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -bed Arabidopsis_thaliana.TAIR10.59_UTR.bed > TAIR10_UTR_seq.bed
 
 sortBed -i TAIR10_UTR.bed | groupBy -g 5-6 -c 1,2,3,4 -o first,first,first,first | awk '{ print $3,$4,$5,$1,$2,$6 }' OFS='\t' > TAIR10_UTR.sorted.grouped.bed
 
