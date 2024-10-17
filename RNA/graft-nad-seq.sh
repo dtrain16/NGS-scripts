@@ -16,19 +16,27 @@ set -eu
 # conda install -n <name> -c bioconda fastqc
 # conda install -n <name> -c bioconda cutadapt
 # conda install -n <name> -c bioconda star
+# conda install -n <name> -c bioconda seqkit 
 
-if [ "$#" -lt 4 ]; then
+if [ "$#" -lt 4 ] || [ "$#" -gt 6 ]; then
 echo "Missing required arguments!"
-echo "USAGE: graft-nad-seq.sh <fastq R1> </path/to/index> <adapter_file> <fileID>"
-echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir ~/GRAFT-NAD-seq_adapters.fa sample_rep1"
+echo "USAGE: graft-nad-seq.sh <fastq R1> </path/to/index> <adapter_file> <fileID> <optional: branch sequence (default given in example)>"
+echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir ~/GRAFT-NAD-seq_adapters.fa sample_rep1 GCTTGTTGTG"
 exit 1
 fi
 
+## branch sequence from GRAFT-NAD-seq library construction
+fq1_branch="CACAACAAGC"
+fq2_branch="GCTTGTTGTG"
+
+if [ "$#" -eq 4 ]; then branch_seq='GCTTGTTGTG' fi
+
+if [ "$#" -eq 5 ]; then branch_seq=$6 fi
 
 #gather input variables
 fq=$1
 index=$2;
-adap=$3; #path to subread indexed reference genome
+adap=$3;
 fileID=$4;
 dow=$(date +"%F-%H-%m-%S")
 
@@ -52,16 +60,24 @@ fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 
 if [[ $fq == *"fq.gz" ]]; then mv ${fq%%.fq*}_fastqc* 1_fastqc; else mv ${fq%%.fastq*}_fastqc* 1_fastqc; fi
 
-echo "Read trimming... "
-
-# read trimming with trimgalore
+echo "Extract branch sequence and trim adapters"
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --length 30 --cores 8 --adapter_fasta $adap --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+
+## extract reads beginning with branch sequence (R2 of NAD-GRAFT-seq library)
+if [[ $fq == *"fq.gz" ]]; then seqkit grep -s -r -p "^${branch_seq}" $fq -o ${fq%%.fq*}_branch.fq.gz ;
+else seqkit grep -s -r -p "^${branch_seq}" $fq -o ${fq%%.fastq*}_branch.fq.gz; fi
+
+if [[ $fq == *"fq.gz" ]]; fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branch=${fq%%.fastq*}_branch.fq.gz
+
+trim_galore --length 25 -a " ${branch_seq} -a file:${adap}" --fastqc --fastqc_args "-t 8" ../$fq_branch 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+
+trim_galore --length 25 --clip_R1 10 --fastqc --fastqc_args "-t 8" ../$fq_branch
 
 cd ../
 mkdir 0_fastq
 mv $fq 0_fastq
+mv $fq_branch 0_fastq
 
 # read alignment
 mkdir 3_align
