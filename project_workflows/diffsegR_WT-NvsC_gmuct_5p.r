@@ -143,13 +143,15 @@ plot(x=out_DERs$log2RefMean, y=out_DERs$log2OtherMean)
 dev.off()
 
 
+out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
+
 #out1 <- select(out_segments, -modelStart, -modelEnd)
 #write_tsv(out1, "WT-N_segments.bed", col_names=F)
 
-out2 <- select(out_DERs, featureId, seqnames, start, end, width, strand, log2FoldChange, padj, log2RefMean, log2OtherMean, modelMean)
-write_tsv(out2, "WT-N_DERs_5p.tsv", col_names=F)
+out2 <- select(out_DERs, seqnames, start, end, derId, width, strand, log2FoldChange, padj, log2RefMean, log2OtherMean, modelMean)
+write_tsv(out2, "WT-N_DERs_5p.tsv", col_names=T)
 
-out3 <- select(out2, seqnames, start, end, featureId, log2FoldChange, strand)
+out3 <- select(out2, seqnames, start, end, derId, log2FoldChange, strand)
 write_tsv(out3, "WT-N_DERs_5p.bed", col_names=F)
 
 # knitr::kable(head(out_DERs[colnames(out_DERs)%in%c("seqnames","start","end","width","strand","log2FoldChange","padj","log2RefMean","log2OtherMean")]))
