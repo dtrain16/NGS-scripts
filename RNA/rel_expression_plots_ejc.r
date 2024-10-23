@@ -1,13 +1,15 @@
 #!/usr/bin/env Rscript
 # args[1] = filename
 # Run on output of BAM_to_EJC.sh
-# Computes normalized 5'P end frequency along 50 nt upstream (3' end of exon) of exon-exon junction (> 49 nt length, see Lee et al 2019 Plant Cell)
+# Computes normalized 5'P end frequency upstream of exon-exon junction (> 49 nt length, see Lee et al 2020 The Plant Cell)
 
 options(echo=T)
 library(fields)
 library(tidyverse)
 args=commandArgs(trailingOnly=T)
 print(args)
+
+rpm_scale <- as.numeric(paste(args[2]))
 
 # Read in file
 input <- read.delim(args[1],head=F) %>% 
@@ -17,25 +19,26 @@ input <- read.delim(args[1],head=F) %>%
 # features at least 50 bp in length
 	subset(length > 49) %>%
 # calculate position relative to 3' end of feature
-	mutate(pos = ifelse(V10 == "+", V2-V7, V6-V3))
+	mutate(pos = ifelse(V10 == "+", V2-V7, V6-V3)) %>%
+	mutate(rpm = V4 * rpm_scale)
 
 # sum all reads in 50 nt window upstream of 3' end
 exon_3p_sum <- subset(input, pos < 0 & pos > -51) %>%
 	group_by(V8) %>%
-	summarise(reads=sum(V4))
+	summarise(sum_rpm=sum(rpm))
 
 # normalise depth per nt by sum of reads across 50 nt window and filter for raw read depth > 0
-exon_3p <- subset(input, pos < 0 & pos > -51) %>%
-	mutate(sum_reads = exon_3p_sum$reads[match(V8, exon_3p_sum$V8)]) %>%
-	mutate(norm_reads = V4/sum_reads) %>%
-	subset(abs(sum_reads) > 9)
+exon_3p <- subset(input, pos <= 0 & pos > -51) %>%
+	mutate(sum_rpm = exon_3p_sum$sum_rpm[match(V8, exon_3p_sum$V8)]) %>%
+	mutate(norm_counts = rpm/sum_rpm) %>%
+	subset(abs(sum_rpm) > 1)
 
-# Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
-sum_exon_3p <- group_by(exon_3p, pos) %>% 
-	summarise(sum_norm_reads = sum(norm_reads), raw_counts = sum(V4)) %>% 
-	mutate(total_reads = sum(sum_norm_reads)) %>% 
-	mutate(rel_freq = sum_norm_reads/total_reads) %>%
-	select(pos, raw_counts, sum_norm_reads, rel_freq)
+# Get sum of normalized reads (i.e. normalized occurrence of 5'P ends) then calculate relative frequency per nt
+sum_exon_3p <- group_by(exon_3p, pos) %>%
+	summarise(sum_norm_counts = sum(norm_counts), counts_raw = sum(V4), counts_rpm = sum(rpm)) %>% ## sum of normalized counts and rpm at each position
+	mutate(total_counts = sum(sum_norm_counts)) %>% ## sum of all normalized counts 
+	mutate(rel_freq = sum_norm_counts/total_counts) %>% ## freq of normalized counts per position relative to all normalized counts
+	select(pos, counts_raw, counts_rpm, rel_freq)
 
 # name output file
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-# Script to summarise 5'P read ends (e.g. PARE-seq, GMUCT) across features of interest in bedGraph format
+# Script to summarise 5'P read ends (e.g. PARE-seq, GMUCT) across features of interest in bedGraph format and scale to reads per million (RPM)
 
 ### CONDA environment is installed
 # conda create --name ngs_plots

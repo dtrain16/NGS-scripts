@@ -84,7 +84,7 @@ exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
         mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
         subset(Isoform==1) %>% ## subset for primary transcript isoform
-        select(c('seqname','start','end','Name','score','strand'))
+        select(c('seqname','start','end','Name','feature','strand'))
 
 write.table(exon,'Arabidopsis_thaliana.TAIR10.59_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
@@ -109,7 +109,7 @@ cd_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
 	subset(Isoform==1) %>% ## subset for primary transcript isoform
 	subset(Transcript %in% mRNA$Name) %>%
-        select(seqname,start,end,Name,score,strand) %>%
+        select(seqname,start,end,Name,feature,strand) %>%
 	unique
 
 write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.59_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
