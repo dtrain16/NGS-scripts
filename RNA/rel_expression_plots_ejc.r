@@ -33,12 +33,12 @@ exon_3p <- subset(input, pos <= 0 & pos > -51) %>%
 	mutate(norm_counts = rpm/sum_rpm) %>%
 	subset(abs(sum_rpm) > 1)
 
-# Get sum of normalized reads (i.e. normalized occurrence of 5'P ends) then calculate relative frequency per nt
+# Get sum of normalized reads (i.e. normalized occurrence of 5'P ends, Pi) then calculate relative frequency per nt
 sum_exon_3p <- group_by(exon_3p, pos) %>%
-	summarise(sum_norm_counts = sum(norm_counts), counts_raw = sum(V4), counts_rpm = sum(rpm)) %>% ## sum of normalized counts and rpm at each position
+	summarise(sum_norm_counts = sum(norm_counts), counts_raw = sum(V4), counts_rpm = sum(rpm)) %>% ## sum of normalized counts (Pi), raw coubts, and scaled counts (rpm) at each position
 	mutate(total_counts = sum(sum_norm_counts)) %>% ## sum of all normalized counts 
 	mutate(rel_freq = sum_norm_counts/total_counts) %>% ## freq of normalized counts per position relative to all normalized counts
-	select(pos, counts_raw, counts_rpm, rel_freq)
+	select(pos, sum_norm_counts, rel_freq) # take columns for Pi and relative frequency of Pi
 
 # name output file
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
