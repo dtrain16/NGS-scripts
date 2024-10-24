@@ -12,113 +12,42 @@ set -u
 # conda install -n ngs_plots -c r r-tidyverse
 # conda activate ngs_plots
 
-if [ "$#" -lt 6 ]; then
+if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
-echo "USAGE: BAM_to_STOP.sh <.BAM> <strandedness> <bedfile annotation> <feature name> <distance>"
-echo "strandedness = unstranded, reverse, or  forward"
-echo "EXAMPLE: BAM_to_STOP.sh col0_rep1.sorted.bam unstranded Arabidopsis_thaliana.TAIR10.54_stop.bed stop 50"
-echo "annotation should be start or stop codons, manually calculated from TAIR10 Ensembl UTR annotations"
+echo "USAGE: BAM_to_STOP.sh <.BAM> <layout: SE/PE> <bedfile annotation> <feature name> <distance (upstream of stop)>"
+echo "unstranded only (degradomes)"
+echo "EXAMPLE: BAM_to_STOP.sh col0_rep1.sorted.bam SE Arabidopsis_thaliana.TAIR10.54_stop.bed stop 40"
+echo "annotation should be start or stop codons (see TAIR_annotation.sh)"
 exit 1
 fi
 
 smp=$1
 lay=$2
-str=$3
-bedfile=$4
-out=$5
-dis=$6
+bedfile=$3
+out=$4
+dis=$5
 
 echo ""
 echo "sample = $1"
 echo "layout = $2"
-echo "strand = $3"
-echo "bedfile = $4"
-echo "feature = $5"
-echo "distance = $6"
+echo "bedfile = $3"
+echo "feature = $4"
+echo "distance = $5"
 echo ""
 
 echo "calculate scaling factor"
 if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)"); fi
 if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)/2"); fi
 
+echo "BAM to bed..."
+bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
+closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
+awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
 
-if [[ "$str"  == "unstranded" ]] ; then 
+echo 'do maths'
+Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.5p.bed $scl
 
-	echo "BAM to bed..."
-	bedtools genomecov -bg -5 -scale $scl -ibam $smp > ${smp%%.bam}.5p.bed
-	closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
-	awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
-
-	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.5p.bed
-
-	echo 'cleaning'
-	rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
-
-fi
-
-if [[ "$str"  == "forward" ]] ; then
-
-	# https://www.biostars.org/p/179035/
-	# extract reads from + and - strand
-	
-	echo 'stranded BAMs'
-	# map to reverse strand
-	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
-	# map to foward strand
-	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
-	
-	echo "BAM to bedgraphs at exons ..."
-	# minus strand
-	bedtools genomecov -bg -5 -scale -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.minus.5p.bed
-	closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
-
-	# plus strand
-	bedtools genomecov -bg -5 -scale $scl -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.plus.5p.bed
-	closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
-
-	echo 'do maths'
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
-	Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
-	
-	echo "Cleaning"
-	rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed
-
-fi
-
-
-if [[ "$str"  == "reverse" ]] ; then
-	
-	# https://www.biostars.org/p/179035/
-	# extract reads from + and - strand
-
-	echo 'stranded BAMs'
-	# reverse strand
-	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
-	# forward strand
-	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
-	
-        echo "BAM to bedgraphs at exons ..."
-        # minus strand
-        bedtools genomecov -bg -5 -scale -$scl -ibam ${smp%%bam}forward.bam > ${smp%%.bam}.minus.5p.bed
-        closestBed -D "b" -a ${smp%%.bam}.minus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.minus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.minus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
-
-        # plus strand
-        bedtools genomecov -bg -5 -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%.bam}.plus.5p.bed
-        closestBed -D "b" -a ${smp%%.bam}.plus.5p.bed -b $bedfile > ${smp%%.bam}_${out}.plus.5p.bed
-        awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.plus.5p.bed > ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
-
-        echo 'do maths'
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.minus.5p.bed
-        Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.plus.5p.bed
-
-        echo "Cleaning"
-        rm -v  ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%.bam}.minus.5p.bed ${smp%%.bam}_${out}.minus.5p.bed ${smp%%.bam}.plus.5p.bed ${smp%%.bam}_${out}.plus.5p.bed
-	
-fi
-
+echo 'cleaning'
+rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
 
 

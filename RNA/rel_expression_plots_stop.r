@@ -9,30 +9,33 @@ library(tidyverse)
 args=commandArgs(trailingOnly=T)
 print(args)
 
+rpm_scale <- as.numeric(paste(args[2]))
+
 # Read in file
 input <- read.delim(args[1],head=F) %>% 
 # Remove reads to plastid and mitochondria
 	subset(V1 != 'ChrM' & V1 != 'ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
 # calculate position relative to first base of STOP or START codon
-	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3))
+	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3)) %>%
+	mutate(rpm = V4 * rpm_scale)
 
 # sum all reads in 50 nt window upstream of 3' end
 stop_5p_sum <- group_by(input, V8) %>%
-	summarise(reads=sum(V4))
+	summarise(sum_rpm=sum(rpm), sum_reads=sum(V4))
 
 # normalise depth per nt by sum of reads across window
-stop_5p <- mutate(input, sum_reads = stop_5p_sum$reads[match(V8, stop_5p_sum$V8)]) %>%
-	mutate(norm_reads = V4/sum_reads) %>%
-	subset(abs(sum_reads) > 9)
+stop_5p <- mutate(input, sum_rpm = stop_5p_sum$sum_rpm[match(V8, stop_5p_sum$V8)]) %>%
+	mutate(norm_counts = rpm/sum_rpm) %>%
+	subset(sum_rpm > 1)
 
-# Get sum of normalized reads (i.e.normalized occurrence of 5'P ends [Pi] in Lee et al 2019 Plant Cell) then calculate relative frequency per nt
+# Get sum of normalized reads (i.e.normalized occurrence of 5'P ends, Pi) then calculate relative frequency per nt
 sum_stop_5p <- group_by(stop_5p, pos) %>% 
-	summarise(sum_norm_reads = sum(norm_reads), raw_counts = sum(V4)) %>% 
-	mutate(total_reads = sum(sum_norm_reads)) %>% 
-	mutate(rel_freq = sum_norm_reads/total_reads) %>%
-	select(pos, raw_counts, sum_norm_reads, rel_freq)
+	summarise(sum_norm_counts = sum(norm_counts), counts_raw = sum(V4), counts_rpm = sum(rpm)) %>% ## sum of normalized counts (Pi), raw counts, and scaled counts (rpm) per nt  
+	mutate(total_counts = sum(sum_norm_counts)) %>% ## sum of all normalized counts 
+	mutate(rel_freq = sum_norm_counts/total_counts) %>% ## freq of normalized counts per position relative to all normalized counts
+	select(pos, sum_norm_counts, rel_freq)
 
-# name output filea
+# name output file
 name <- sapply(strsplit(as.character(args[1]),'.bed'), function(l) l[1])
 
 ## diagnostic plot on single sample
