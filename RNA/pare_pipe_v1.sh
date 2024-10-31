@@ -30,7 +30,7 @@ fi
 fq=$1
 index=$2; #path to STAR index
 fileID=$3;
-dow=$(date +"%F-%H-%m-%S")
+dow=$(date +"%F-%H-%m")
 
 echo "##################"
 echo "Performing single-end alignment with the following parameters:"
@@ -68,12 +68,12 @@ mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq.gz -t 3_align/
 cd 3_align
 echo "Beginning alignment ..."
 
-# discard sequences shorter than 20 nucleotides
+# truncate to first 20 nt, discard sequences shorter than 20 nucleotides
 zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 20 -o ${fq%%.fastq}.20bp.trimmed.fq.gz
 input=${fq%%.fastq}.20bp.trimmed.fq.gz
 
 # align using STAR allowing 0 mismatches
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix $fileID --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
