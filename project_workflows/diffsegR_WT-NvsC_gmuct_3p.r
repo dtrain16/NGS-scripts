@@ -50,13 +50,13 @@ write.table(
 #- display sample information table -------------------------------------------#
 knitr::kable(sample_info, row.names = FALSE)
 
+## genome file
 genome <- read_tsv("~/ref_seqs/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.len", col_names=F)
 genome <- subset(genome, X1 != "Mt" & X1 != "Pt")
 
 ### setup comparisons and loop for each chromosome
 
 out_DERs <- NULL
-out_segments <- NULL
 
 for(i in unique(genome$X1)){
 
@@ -98,50 +98,39 @@ SExp <- segmentation(
 	isPairedEnd = TRUE
 )
 
-#- subset to segments with width < 5 nt ------------------------------------------------#
-segment_coordinates <- as.data.frame(SummarizedExperiment::rowRanges(SExp))
-segment_coordinates <- subset(segment_coordinates, width < 6)
-SExp_5 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 6,]
+#- subset to segments with width < 11 nt ------------------------------------------------#
+SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,]
 
 # differential exprssion analysis
 dds <- dea(
   data              = data,
-  SExp              = SExp_5,
-  design            = ~condition,
+  SExp              = SExp_10,
+  design            = ~ condition,
   sizeFactors       = NA,
-  significanceLevel = 0.05,
-  predicate = NULL,
-  postHoc_significanceLevel = 0.05,
-  postHoc_tdpLowerBound = 0.95,
-  orderBy = "pvalue",
-  verbose = FALSE,
-  dichotomicSearch = FALSE
+  significanceLevel = 0.01,
+  orderBy = "pvalue"
 )
 
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$rejectedHypotheses,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
 
-out_segments <- rbind(out_segments, segment_coordinates)
 out_DERs <- rbind(out_DERs,DERs)
 }
 
 ## clear memory cache
 gc()
 
-pdf("qc_plots_3p.pdf")
-hist(out_DERs$modelMean)
-hist(out_DERs$log2FoldChange)
-plot(x=out_DERs$modelMean, y=out_DERs$log2FoldChange)
-plot(x=out_DERs$log2RefMean, y=out_DERs$log2OtherMean)
-dev.off()
+#pdf("qc_plots_3p.pdf")
+#hist(out_DERs$modelMean)
+#hist(out_DERs$log2FoldChange)
+#plot(x=out_DERs$modelMean, y=out_DERs$log2FoldChange)
+#plot(x=out_DERs$log2RefMean, y=out_DERs$log2OtherMean)
+#dev.off()
 
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
 
-out2 <- select(out_DERs, seqnames, start, end, derId, width, strand, log2FoldChange, padj, log2RefMean, log2OtherMean, modelMean)
-write_tsv(out2, "WT-N_DERs_3p.tsv", col_names=T)
-
-out3 <- select(out2, seqnames, start, end, derId, log2FoldChange, strand)
-write_tsv(out3, "WT-N_DERs_3p.bed", col_names=F)
+out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
+write_tsv(out, "WT-N_DERs_3p.bed", col_names=F)
 
 
