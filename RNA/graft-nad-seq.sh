@@ -65,11 +65,46 @@ mkdir 2_read_trimming
 cd 2_read_trimming
 
 ## extract reads beginning with branch sequence (R2 of NAD-GRAFT-seq library)
-if [[ $fq == *"fq.gz" ]]; then seqkit grep -s -r -p "^${branch_seq}" $fq -o ${fq%%.fq*}_branch.fq.gz ;
-else seqkit grep -s -r -p "^${branch_seq}" $fq -o ${fq%%.fastq*}_branch.fq.gz; fi
+if [[ $fq == *"fq.gz" ]]; 
+	then seqkit grep -j 6 -s -r -p "^${branch_seq}" $fq -o ${fq%%.fq*}_branch.fq.gz ;
+	else seqkit grep -j 6 -s -r -p "^${branch_seq}" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
+fi
 
-if [[ $fq == *"fq.gz" ]]; fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branch=${fq%%.fastq*}_branch.fq.gz
+if [[ $fq == *"fq.gz" ]]; 
+	then fq_branch=${fq%%.fq*}_branch.fq.gz; 
+	else fq_branch=${fq%%.fastq*}_branch.fq.gz;
+fi
 
+## fuzzy analysis
+fq=SQ24043572-W1-W1_combined_R2.fastq.gz
+seqkit grep -j 8 -s -r -p "^GCTTGTTGTG|^GCTTGTTGT[G|A]|^GCTTGTTG[T|A]|^GCTTGTTGTG[T|A]|GCTTGTTGTGT[T|A]|GCTTGTTGTGTTA" $fq -o ${fq%%.fastq*}_branch_fuzzy.fq.gz
+fastqc -t 12 ${fq%%.fastq*}_branch_fuzzy.fq.gz
+cutadapt -g "^GCTTGTTGTG" -g "^GCTTGTTGTR" -g "^GCTTGTTGW" -g "^GCTTGTTGTGB" -g "^GCTTGTTGTGBB" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq*}_branch_fuzzy_trimmed.fq.gz" ${fq%%.fastq*}_branch_fuzzy.fq.gz
+fastqc -t 12 ${fq%%.fastq*}_branch_fuzzy_trimmed.fq.gz
+
+
+seqkit grep -j 6 -s -r -p "^GCTTGTTGTG" $fq -o ${fq%%.fastq*}_branch.fq.gz
+seqkit grep -j 6 -s -r -p "^GCTT" $fq -o ${fq%%.fastq*}_branch_short.fq.gz
+
+fastqc -t 12 ${fq%%.fastq*}_branch.fq.gz
+fastqc -t 12 ${fq%%.fastq*}_branch_short.fq.gz
+
+cutadapt -g "^GCTTGTTGTG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq.gz}_branch_trimmed.fq.gz" ${fq%%.fastq*}_branch.fq.gz
+cutadapt -g "^GCTTGTTGTG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq*}_branch_short_trimmed.fq.gz" ${fq%%.fastq*}_branch_short.fq.gz
+
+
+fastqc -t 12 ${fq%%.fastq*}_branch_trimmed.fq.gz
+fastqc -t 12 ${fq%%.fastq*}_branch_short_trimmed.fq.gz
+
+
+fastqc -t 8 $fq_branch 2>&1 | tee -a ${fileID}_logs_${dow}.log
+
+## cutadapt to remove branch seq and 3' of read and universal PCR primer at 5' end of read
+## -g Illumina single end PCR primer 1
+cutadapt -g "AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT" -a "${branch_seq}" -e 0.3 -m 25 -o "${fq_branch%%fq.gz}trimmed.fq.gz" ../$fq_branch | tee -a ../${fileID}_logs_${dow}.log
+fastqc -t 8 ${fq_branch%%fq.gz}trimmed.fq.gz 2>&1 | tee -a ${fileID}_logs_${dow}.log
+
+## trim_galore trimming
 trim_galore --length 25 -a " ${branch_seq} -a file:${adap}" --fastqc --fastqc_args "-t 8" ../$fq_branch 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 trim_galore --length 25 --clip_R1 10 --fastqc --fastqc_args "-t 8" ../$fq_branch
