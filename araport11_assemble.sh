@@ -50,7 +50,7 @@ gffRead <- function(gffFile, nrows = -1) {
      return(gff)
 }
 
-ara=gffRead('Araport11_GFF3_genes_transposons.201606.gff')
+ara=gffRead("Araport11_GFF3_genes_transposons.current.gff")
 
 ### Gene annotation
 gene=subset(ara,ara$feature=='gene')
@@ -65,6 +65,7 @@ te=subset(ara,ara$feature=='transposable_element')
 te$Name=getAttributeField(te$attributes, 'Name')
 te$ID=getAttributeField(te$attributes, 'ID')
 te$alias=getAttributeField(te$attributes, 'Alias')
+te$seqname=gsub(pattern="Chr",replacement='', x=te$seqname)
 te.out=te[,c('seqname','start','end','Name','score','strand','alias')]
 
 write.table(te.out,'Araport11_TE.bed',sep='\t',row.names=F,col.names=F,quote=F)
