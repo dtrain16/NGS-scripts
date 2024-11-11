@@ -57,13 +57,14 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-# mRNA annotation - primary isoform only
+# mRNA annotation - protein coding and primary isoform only
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
         mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+	mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
 	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
-	subset(Isoform==1) %>%
-        select(c('seqname','start','end','Name','score','strand'))
+	subset(Isoform==1 & biotype == "protein_coding") %>%
+        select(c('seqname','start','end','Name','feature','strand'))
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
 

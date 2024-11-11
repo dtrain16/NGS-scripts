@@ -66,7 +66,7 @@ te$Name=getAttributeField(te$attributes, 'Name')
 te$ID=getAttributeField(te$attributes, 'ID')
 te$alias=getAttributeField(te$attributes, 'Alias')
 te$seqname=gsub(pattern="Chr",replacement='', x=te$seqname)
-te.out=te[,c('seqname','start','end','Name','score','strand','alias')]
+te.out=te[,c('seqname','start','end','Name','feature','strand')]
 
 write.table(te.out,'Araport11_TE.bed',sep='\t',row.names=F,col.names=F,quote=F)
 
