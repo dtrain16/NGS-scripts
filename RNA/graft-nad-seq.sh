@@ -64,7 +64,7 @@ fi
 if [[ $fq == *"fastq.gz" ]]; then fq_branch=${fq%%.fastq*}_branch.fq.gz; else fq_branch=${fq%%.fq*}_branch.fq.gz; fi
 
 ## cutadapt to remove branch seq at 5' end of read and universal PCR primer at 3' end of read
-cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.2 -m 25 -o "${fq_branch%%.fq*}_trimmed.fq.gz" ${fq_branch}2>&1 | tee -a ../${fileID}_logs_${dow}.log
+cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.2 -m 25 -o "${fq_branch%%.fq*}_trimmed.fq.gz" ${fq_branch} 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 fastqc -t 12 ${fq_branch%%.fq*}_trimmed.fq.gz 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
