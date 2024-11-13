@@ -18,122 +18,77 @@ set -eu
 # conda install -n <name> -c bioconda star
 # conda install -n <name> -c bioconda seqkit 
 
-if [ "$#" -lt 4 ] || [ "$#" -gt 6 ]; then
+if [ "$#" -lt 3 ] || [ "$#" -gt 3 ]; then
 echo "Missing required arguments!"
-echo "USAGE: graft-nad-seq.sh <fastq R1> </path/to/index> <adapter_file> <fileID> <optional: branch sequence (default given in example)>"
-echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir ~/GRAFT-NAD-seq_adapters.fa sample_rep1 GCTTGTTGTG"
+echo "USAGE: graft-nad-seq.sh <fastq R2> </path/to/index> <fileID>"
+echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir sample_rep1"
 exit 1
 fi
-
-## branch sequence from GRAFT-NAD-seq library construction
-fq1_branch="CACAACAAGC"
-fq2_branch="GCTTGTTGTG"
-
-if [ "$#" -eq 4 ]; then branch_seq='GCTTGTTGTG' fi
-
-if [ "$#" -eq 5 ]; then branch_seq=$6 fi
 
 #gather input variables
 fq=$1
 index=$2;
-adap=$3;
-fileID=$4;
-dow=$(date +"%F-%H-%m-%S")
+fileID=$3;
+dow=$(date +"%F-%H-%m")
 
 echo "##################"
 echo "Performing single-end alignment with the following parameters:"
 echo "Input Files: $fq"
 echo "genome index: $index"
-echo "adapter sequences: $adap"
 echo "Output ID: $fileID"
 echo "Time of analysis: $dow"
 echo "##################"
 
 # make sample work directory
-mkdir ${fileID}_graft_${dow}
-mv $fq ${fileID}_graft_${dow}
-cd ${fileID}_graft_${dow}
+mkdir ${fileID}_graft-nad_${dow}
+mv $fq ${fileID}_graft-nad_${dow}
+cd ${fileID}_graft-nad_${dow}
 
 # initial fastqc
 mkdir 1_fastqc
-fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 
+fastqc -t 12 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 if [[ $fq == *"fq.gz" ]]; then mv ${fq%%.fq*}_fastqc* 1_fastqc; else mv ${fq%%.fastq*}_fastqc* 1_fastqc; fi
 
 echo "Extract branch sequence and trim adapters"
 mkdir 2_read_trimming
+mv $fq 2_read_trimming
 cd 2_read_trimming
 
-## extract reads beginning with branch sequence (R2 of NAD-GRAFT-seq library)
+## extract reads beginning with branch sequence (GCTTGTTGTG) with flexibility at first and last base
 if [[ $fq == *"fq.gz" ]]; 
-	then seqkit grep -j 6 -s -r -p "^${branch_seq}" $fq -o ${fq%%.fq*}_branch.fq.gz ;
-	else seqkit grep -j 6 -s -r -p "^${branch_seq}" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
+	then seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz ;
+	else seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
 fi
 
-if [[ $fq == *"fq.gz" ]]; 
-	then fq_branch=${fq%%.fq*}_branch.fq.gz; 
-	else fq_branch=${fq%%.fastq*}_branch.fq.gz;
-fi
+if [[ $fq == *"fastq.gz" ]]; then fq_branch=${fq%%.fastq*}_branch.fq.gz; else fq_branch=${fq%%.fq*}_branch.fq.gz; fi
 
-## fuzzy analysis
-fq=SQ24043572-W1-W1_combined_R2.fastq.gz
-seqkit grep -j 8 -s -r -p "^GCTTGTTGTG|^GCTTGTTGT[G|A]|^GCTTGTTG[T|A]|^GCTTGTTGTG[T|A]|GCTTGTTGTGT[T|A]|GCTTGTTGTGTTA" $fq -o ${fq%%.fastq*}_branch_fuzzy.fq.gz
-fastqc -t 12 ${fq%%.fastq*}_branch_fuzzy.fq.gz
-cutadapt -g "^GCTTGTTGTG" -g "^GCTTGTTGTR" -g "^GCTTGTTGW" -g "^GCTTGTTGTGB" -g "^GCTTGTTGTGBB" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq*}_branch_fuzzy_trimmed.fq.gz" ${fq%%.fastq*}_branch_fuzzy.fq.gz
-fastqc -t 12 ${fq%%.fastq*}_branch_fuzzy_trimmed.fq.gz
+## cutadapt to remove branch seq at 5' end of read and universal PCR primer at 3' end of read
+cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.2 -m 25 -o "${fq_branch%%.fq*}_trimmed.fq.gz" ${fq_branch}2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
-
-seqkit grep -j 6 -s -r -p "^GCTTGTTGTG" $fq -o ${fq%%.fastq*}_branch.fq.gz
-seqkit grep -j 6 -s -r -p "^GCTT" $fq -o ${fq%%.fastq*}_branch_short.fq.gz
-
-fastqc -t 12 ${fq%%.fastq*}_branch.fq.gz
-fastqc -t 12 ${fq%%.fastq*}_branch_short.fq.gz
-
-cutadapt -g "^GCTTGTTGTG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq.gz}_branch_trimmed.fq.gz" ${fq%%.fastq*}_branch.fq.gz
-cutadapt -g "^GCTTGTTGTG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.3 -m 25 -o "${fq%%.fastq*}_branch_short_trimmed.fq.gz" ${fq%%.fastq*}_branch_short.fq.gz
-
-
-fastqc -t 12 ${fq%%.fastq*}_branch_trimmed.fq.gz
-fastqc -t 12 ${fq%%.fastq*}_branch_short_trimmed.fq.gz
-
-
-fastqc -t 8 $fq_branch 2>&1 | tee -a ${fileID}_logs_${dow}.log
-
-## cutadapt to remove branch seq and 3' of read and universal PCR primer at 5' end of read
-## -g Illumina single end PCR primer 1
-cutadapt -g "AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT" -a "${branch_seq}" -e 0.3 -m 25 -o "${fq_branch%%fq.gz}trimmed.fq.gz" ../$fq_branch | tee -a ../${fileID}_logs_${dow}.log
-fastqc -t 8 ${fq_branch%%fq.gz}trimmed.fq.gz 2>&1 | tee -a ${fileID}_logs_${dow}.log
-
-## trim_galore trimming
-trim_galore --length 25 -a " ${branch_seq} -a file:${adap}" --fastqc --fastqc_args "-t 8" ../$fq_branch 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-trim_galore --length 25 --clip_R1 10 --fastqc --fastqc_args "-t 8" ../$fq_branch
+fastqc -t 12 ${fq_branch%%.fq*}_trimmed.fq.gz 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
-mv $fq 0_fastq
-mv $fq_branch 0_fastq
+mv 2_read_trimming/$fq  0_fastq/
+mv 2_read_trimming/$fq_branch 0_fastq/
 
 # read alignment
 mkdir 3_align
-
-if [[ $fq == *"fq.gz" ]]; then mv 2_read_trimming/${fq%%.fq*}_trimmed.fq* -t 3_align/; else
-        mv 2_read_trimming/${fq%%.fastq*}_trimmed.fq* -t 3_align/;fi
+mv 2_read_trimming/${fq_branch%%.fq*}_trimmed.fq.gz -t 3_align/
 
 cd 3_align
 
 echo "Beginning alignment ..."
-
-if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
-
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 | tee -a  ../${fileID}_logs_${dow}.log
+input=${fq_branch%%.fq*}_trimmed.fq.gz
+STAR --runThreadN 12 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
-
 outbam="${fileID}*.sortedByCoord.out.bam"
 samtools index $outbam 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-mv *trimmed.fq.gz ../2_read_trimming/
+mv $input ../2_read_trimming/
 
 echo "Alignment complete"
+
 
 
