@@ -16,35 +16,28 @@
 
 library(tidyverse)
 library(DiffSegR)
-nb_threads = 8
+
+## multi-threading options
+nb_threads = 10
+nb_threads_locus = 10
 
 working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
-  sample    = c("WT-N_1", "WT-N_2", "WT-N_3", "WT-C_1", "WT-C_2", "WT-C_3"),
-  condition = rep(c("WT-N", "WT-C"), each = 3),
-  replicate = rep(1:3,2),
-  bam       = sapply(
-	c("S5-3N_Aligned.sortedByCoord.out.bam", 
-	"S7-4N_Aligned.sortedByCoord.out.bam",
-	"S11-10N_Aligned.sortedByCoord.out.bam",
-	"S6-3C_Aligned.sortedByCoord.out.bam",
-	"S8-4C_Aligned.sortedByCoord.out.bam",
-	"S12-10C_Aligned.sortedByCoord.out.bam"
-    ),
-    function(bam) file.path(working_directory, bam)
-  ),
-  coverage  = file.path(
-    working_directory,
-    paste0(c("WT-N_1", "WT-N_2", "WT-N_3", "WT-C_1", "WT-C_2", "WT-C_3"), ".rds")
-  )
-)
-
-#- save sample information table ----------------------------------------------# 
-write.table(
-  sample_info, 
-  file.path(working_directory, "sample_info.txt")
+	sample    = c("WT.N_1", "WT.N_2", "WT.N_3", "WT.C_1", "WT.C_2", "WT.C_3"),
+	condition = rep(c("WT.N", "WT.C"), each = 3),
+	replicate = rep(1:3,2),
+	bam       = sapply(
+		c("S5-3N_Aligned.sortedByCoord.out.bam", 
+		"S7-4N_Aligned.sortedByCoord.out.bam",
+		"S11-10N_Aligned.sortedByCoord.out.bam",
+		"S6-3C_Aligned.sortedByCoord.out.bam",
+		"S8-4C_Aligned.sortedByCoord.out.bam",
+		"S12-10C_Aligned.sortedByCoord.out.bam"
+		), function(bam) file.path(working_directory, bam)),
+	isPairedEnd = rep(TRUE, 6),
+	strandSpecific = rep(0, 6)
 )
 
 #- display sample information table -------------------------------------------#
@@ -55,7 +48,6 @@ genome <- read_tsv("~/ref_seqs/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.len",
 genome <- subset(genome, X1 != "Mt" & X1 != "Pt")
 
 ### setup comparisons and loop for each chromosome
-
 out_DERs <- NULL
 
 for(i in unique(genome$X1)){
@@ -63,39 +55,37 @@ for(i in unique(genome$X1)){
 chr <- paste(i)
 stop <- genome$X2[genome$X1==i]
 
-## load data
-data <- loadData(
-  sampleInfo   = file.path(working_directory,"sample_info.txt"),
-  locus        = list(seqid = i, chromStart = 1, chromEnd = stop),
-  referenceCondition = "WT-C",
-  isPairedEnd = TRUE,
-  readLength = 150,
-  coverageType = "threePrime",
-  stranded = FALSE,
-  fromBam    = TRUE,
-  nbThreads  = nb_threads,
-  verbose = TRUE,
+## import data on experiment
+data <- newExperiment(
+	sampleInfo = sample_info,
+	loci       = data.frame(seqid = i, chromStart = 1, chromEnd = stop),
+	referenceCondition = "WT.C",
+	otherCondition = "WT.N",
+	nbThreads  = nb_threads,
+	nbThreadsByLocus = nb_threads_locus,
+	coverage = working_directory
 )
 
-## Changepoint detection to define segments
-SExp <- segmentation(
-	data = data, 
-	weightType = "unweighted",
-	modelSelectionType = "yao",
-	featureCountsType = "fromBam",
-	compressed = TRUE,
+print(data)
+
+## generate coverage profile from BAM
+coverage(data = data, coverageType = "threePrime", verbose = TRUE)
+
+## transform coverage profile into per-base log2-FC and perform changepoint detection to define segments
+features <- segmentationLFC(
+	data  = data, 
 	alpha = 2,
-	segmentNeighborhood = FALSE,
-	Kmax = NULL,
-	verbose = FALSE,
-	nbThreadsGridSearch = 1,
-	alphas = NULL,
-	gridSearch = FALSE,
-	outputDirectory = working_directory,
-	nbThreadsFeatureCounts = nb_threads,
-	strandSpecific = 0,
-	read2pos = 3,
-	isPairedEnd = TRUE
+	modelSelectionType = "yao",
+	verbose = TRUE
+)
+
+## Quantify expression of segments
+SExp <- counting(
+	data = data,
+	features = features,
+	featureCountsType = "fromBam",
+	featureCountsOtherParams = list(read2pos = 3),
+	verbose = TRUE 
 )
 
 #- subset to segments with width < 11 nt ------------------------------------------------#
@@ -103,17 +93,16 @@ SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,
 
 # differential exprssion analysis
 dds <- dea(
-  data              = data,
-  SExp              = SExp_10,
-  design            = ~ condition,
-  sizeFactors       = NA,
-  significanceLevel = 0.01,
-  orderBy = "pvalue"
+	SExp        = SExp_10, 
+	design      = ~condition,
+	significanceLevel = 0.01,
+	verbose = TRUE
 )
 
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$rejectedHypotheses,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
+DERs <- subset(DERs, baseMean > 10)
 
 out_DERs <- rbind(out_DERs,DERs)
 }
@@ -129,8 +118,8 @@ gc()
 #dev.off()
 
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
-
 out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
+
 write_tsv(out, "WT-N_DERs_3p.bed", col_names=F)
 
 
