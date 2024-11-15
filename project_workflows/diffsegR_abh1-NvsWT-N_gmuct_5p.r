@@ -9,6 +9,7 @@
 #conda install -n diffseg -c bioconda bioconductor-rtracklayer
 #conda install -n diffseg -c bioconda bioconductor-sparsematrixstats
 #conda install -n diffseg -c bioconda bioconductor-delayedmatrixstats
+#conda install -n diffseg -c conda-forge r-remotes
 #conda activate diffseg
 #### R
 #remotes::install_github("sanssouci-org/sanssouci")

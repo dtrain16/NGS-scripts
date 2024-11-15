@@ -9,6 +9,7 @@
 #conda install -n diffseg -c bioconda bioconductor-rtracklayer
 #conda install -n diffseg -c bioconda bioconductor-sparsematrixstats
 #conda install -n diffseg -c bioconda bioconductor-delayedmatrixstats
+#conda install -n diffseg -c conda-forge r-remotes
 #conda activate diffseg
 #### R
 #remotes::install_github("sanssouci-org/sanssouci")
@@ -103,7 +104,7 @@ dds <- dea(
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
-DERs <- subset(DERs, baseMean > 10)
+#DERs <- subset(DERs, baseMean > 10)
 
 out_DERs <- rbind(out_DERs,DERs)
 }

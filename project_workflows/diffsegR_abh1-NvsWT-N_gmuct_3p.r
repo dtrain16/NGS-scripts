@@ -9,6 +9,7 @@
 #conda install -n diffseg -c bioconda bioconductor-rtracklayer
 #conda install -n diffseg -c bioconda bioconductor-sparsematrixstats
 #conda install -n diffseg -c bioconda bioconductor-delayedmatrixstats
+#conda install -n diffseg -c conda-forge r-remotes
 #conda activate diffseg
 #### R
 #remotes::install_github("sanssouci-org/sanssouci")
@@ -16,14 +17,17 @@
 
 library(tidyverse)
 library(DiffSegR)
-nb_threads = 8
+
+## multi-threading options
+nb_threads = 10
+nb_threads_locus = 10
 
 working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
 	sample    = c("abh1.N_1", "abh1.N_2", "abh1.N_3", "WT.N_1", "WT.N_2", "WT.N_3"),
-	condition = rep(c("abh1-N", "WT-N"), each = 3),
+	condition = rep(c("abh1.N", "WT.N"), each = 3),
 	replicate = rep(1:3,2),
 	bam       = sapply(
 		c("S15-5N_Aligned.sortedByCoord.out.bam", 
