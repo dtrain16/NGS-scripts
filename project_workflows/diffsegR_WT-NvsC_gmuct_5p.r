@@ -104,7 +104,7 @@ dds <- dea(
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
-#DERs <- subset(DERs, baseMean > 10)
+DERs <- subset(DERs, baseMean > 10)
 
 out_DERs <- rbind(out_DERs,DERs)
 }

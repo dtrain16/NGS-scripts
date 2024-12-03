@@ -26,19 +26,19 @@ working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
-	sample    = c("abh1.N_1", "abh1.N_2", "abh1.N_3", "WT.N_1", "WT.N_2", "WT.N_3"),
-	condition = rep(c("abh1.N", "WT.N"), each = 3),
-	replicate = rep(1:3,2),
+	sample    = c("abh1.N_1", "abh1.N_2", "WT.N_1", "WT.N_2", "WT.N_3"),
+	condition = c(rep("abh1.N", 2), rep( "WT.N", 3)),
+	replicate = c(1:2,1:3),
 	bam       = sapply(
 		c("S15-5N_Aligned.sortedByCoord.out.bam", 
 		"S9-20N_Aligned.sortedByCoord.out.bam",
-		"S24-34N_Aligned.sortedByCoord.out.bam",
+		#"S24-34N_Aligned.sortedByCoord.out.bam",
 		"S5-3N_Aligned.sortedByCoord.out.bam",
 		"S7-4N_Aligned.sortedByCoord.out.bam",
 		"S11-10N_Aligned.sortedByCoord.out.bam"
 		),function(bam) file.path(working_directory, bam)),
-	isPairedEnd = rep(TRUE, 6),
-	strandSpecific = rep(0, 6)	
+	isPairedEnd = rep(TRUE, 5),
+	strandSpecific = rep(0, 5)	
 )
 
 #- display sample information table -------------------------------------------#
@@ -105,7 +105,7 @@ dds <- dea(
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
-DERs <- subset(DERs, baseMean > 10)
+#DERs <- subset(DERs, baseMean > 10)
 
 out_DERs <- rbind(out_DERs,DERs)
 }
@@ -114,7 +114,7 @@ out_DERs <- rbind(out_DERs,DERs)
 gc()
 
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
-out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj)
+out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
 
 write_tsv(out, "abh1-NvsWT-N_DERs_5p.bed", col_names=F)
 

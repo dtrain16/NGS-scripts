@@ -19,7 +19,7 @@
 library(tidyverse)
 library(DiffSegR)
 
-nb_threads = 8
+nb_threads = 10
 
 working_directory <- getwd()
 
