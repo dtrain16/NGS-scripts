@@ -105,7 +105,6 @@ dds <- dea(
 #- extract DERs based on signifiance ----------------------------------------#
 DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
-DERs <- subset(DERs, baseMean > 10)
 
 out_DERs <- rbind(out_DERs,DERs)
 }
@@ -113,15 +112,11 @@ out_DERs <- rbind(out_DERs,DERs)
 ## clear memory cache
 gc()
 
-#pdf("qc_plots_5p.pdf")
-#hist(out_DERs$modelMean)
-#hist(out_DERs$log2FoldChange)
-#plot(x=out_DERs$modelMean, y=out_DERs$log2FoldChange)
-#plot(x=out_DERs$log2RefMean, y=out_DERs$log2OtherMean)
-#dev.off()
-
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
-out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
+out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, maxCooks, log2FoldChange, padj)
+out$cov <- sqrt(out$baseVar)/out$baseMean
+out <- subset(out, baseMean > 10 & cov < 1)
+
 
 write_tsv(out, "WT-N_DERs_5p.bed", col_names=F)
 
