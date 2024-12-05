@@ -46,8 +46,6 @@ mkdir ${fileID}_graft-nad_${dow}
 mv $fq ${fileID}_graft-nad_${dow}
 cd ${fileID}_graft-nad_${dow}
 
-if [[ $fq == *"fq.gz" ]]; then mv ${fq%%.fq*}_fastqc* 1_fastqc; else mv ${fq%%.fastq*}_fastqc* 1_fastqc; fi
-
 echo "Extract branch sequence and trim adapters"
 mkdir 1_read_trimming
 mv $fq 1_read_trimming
@@ -55,43 +53,40 @@ cd 1_read_trimming
 
 ## extract reads beginning with branch sequence (GCTTGTTGTG) with flexibility at first and last base
 if [[ $fq == *"fq.gz" ]]; 
-	then seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz ;
+	then seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz;
 	else seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
 fi
 
-if [[ $fq == *"fastq.gz" ]]; then fq_branch=${fq%%.fastq*}_branch.fq.gz; else fq_branch=${fq%%.fq*}_branch.fq.gz; fi
+if [[ $fq == *"fq.gz" ]]; then fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branch=${fq%%.fastq*}_branch.fq.gz; fi
 
 echo "Trim universal PCR primer sequence from 3' end of read"
 ## remove universal PCR primer at the 3' end of reads
 cutadapt -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.2 -m 25 -o "${fq_branch%%.fq*}_3p_trimmed.fq.gz" ${fq_branch} 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 ## old flags to trim 5' adapter sequences -- obselete
-#cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG" -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT"
+#cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG"
 
 ## R script - trim reads first A at the 5' end of the read, retain read only if A within first 15 bp (10bp branch + flexibility for RT jumping)
-
 echo "Filter and trim reads based on A at 5' end"
 
-## split fq file
-val=$(zcat ${fq_branch%%.fq*}_3p_trimmed.fq.gz | wc -l)
-val_split=$(expr $bl / 12)
-truncated=$(echo "$val_split / 1000000 * 1000000" | bc)
-zcat ${fq_branch%%.fq*}_3p_trimmed.fq.gz | split -l $truncated -d --additional-suffix=.fq
+## split fq file in 12 files for multi-threading
+zcat ${fq_branch%%.fq*}_3p_trimmed.fq.gz 2>&1 | seqkit split -p 12 | tee -a ../${fileID}_logs_${dow}.log
 
 ## run triming R script on split files in parallel - first numeric argument determines length in which A needs to occur (branch sequence = 10 nts)
-parallel -j 12 Rscript ~/scripts/RNA/trim_5p_graft_nad.r 15 {} {}.fq ::: x*
+parallel -j 12 Rscript ~/scripts/RNA/trim_5p_graft_nad.r 15 {} ::: stdin.split/stdin.part_*.fastq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 ## concatenate output files
-#cat *filtered.fq > ${fileID}_filtered_output.fq
-cat *trimmed.fq > ${fileID}_trimmed_output.fq
-gzip ${fileID}_trimmed_output.fq
+cd stdin.split
+cat *processed.fq > ${fileID}_processed_output.fq
+pigz -p 4 ${fileID}_processed_output.fq
+mv ${fileID}_processed_output.fq.gz ../
+cd ../
 
 # clean up intermediates
-rm x*fq
-rm *trimmed.fq
+rm -r stdin.split
 
 ## qc filtered and trimmed reads
-fastqc -t 12 ${fileID}_trimmed_output.fq.gz 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+fastqc -t 12 ${fileID}_processed_output.fq.gz 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -101,11 +96,11 @@ mv 1_read_trimming/$fq_branch 0_fastq/
 # read alignment
 echo "Align filtered and trimmed reads"
 
-#mkdir 2_align
-#mv 1_read_trimming/${fileID}_trimmed_output.fq -t 2_align/
-#cd 2_align
-#STAR --runThreadN 12 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_trimmed_output.fq --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
-#mv ${fileID}_trimmed_output.fq ../1_read_trimming/
+mkdir 2_align
+mv ${fileID}_processed_output.fq -t 2_align/
+cd 2_align
+STAR --runThreadN 12 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
+mv ${fileID}_processed_output.fq ../1_read_trimming/
 
 echo "Alignment complete"
 

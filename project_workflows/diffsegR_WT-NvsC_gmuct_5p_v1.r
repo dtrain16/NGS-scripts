@@ -102,12 +102,12 @@ SExp <- segmentation(
 SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,]
 
 dds <- dea(
-  data              = data,
-  SExp              = SExp_10,
-  design            = ~condition,
-  significanceLevel = 0.01,
-  orderBy = "pvalue",
-  verbose = TRUE
+	data              = data,
+	SExp              = SExp_10,
+	design            = ~condition,
+	predicate = NULL,
+	significanceLevel = 0.01,
+	verbose = TRUE
 )
 
 #- extract DERs based on signifiance ----------------------------------------#

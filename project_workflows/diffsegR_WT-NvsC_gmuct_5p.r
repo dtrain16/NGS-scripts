@@ -98,7 +98,8 @@ dds <- dea(
 	SExp        = SExp_10, 
 	design      = ~condition,
 	significanceLevel = 0.01,
-	verbose = TRUE
+	verbose = TRUE,
+	predicate = NULL	
 )
 
 #- extract DERs based on signifiance ----------------------------------------#
