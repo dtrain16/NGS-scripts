@@ -117,7 +117,5 @@ out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, maxCooks
 out$cov <- sqrt(out$baseVar)/out$baseMean
 out <- subset(out, baseMean > 10 & cov < 1)
 
-
 write_tsv(out, "WT-N_DERs_5p.bed", col_names=F)
-
 
