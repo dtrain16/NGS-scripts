@@ -97,7 +97,7 @@ mv 1_read_trimming/$fq_branch 0_fastq/
 echo "Align filtered and trimmed reads"
 
 mkdir 2_align
-mv 1_read_trimming/${fileID}_processed_output.fq.gz -t 2_align/
+mv 1_read_trimming/${fileID}_processed_output.fq.gz 2_align/
 cd 2_align
 
 STAR --runThreadN 12 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq.gz --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
