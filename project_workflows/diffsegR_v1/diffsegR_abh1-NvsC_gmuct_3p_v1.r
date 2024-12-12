@@ -18,34 +18,24 @@
 
 library(tidyverse)
 library(DiffSegR)
-
 nb_threads = 10
-
 working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
-  sample    = c("WT.N_1", "WT.N_2", "WT.N_3", "WT.C_1", "WT.C_2", "WT.C_3"),
-  condition = rep(c("WT.N", "WT.C"), each = 3),
-  replicate = rep(1:3,2),
+  sample    = c("abh1.N_1","abh1.N_2","abh1.N_3","abh1.C_1","abh1.C_2","abh1.C_3"),
+  condition = c(rep("abh1.N", 3), rep( "abh1.C", 3)),
+  replicate = c(1:3,1:3),
   bam       = sapply(
-	c("S5-3N_Aligned.sortedByCoord.out.bam", 
-	"S7-4N_Aligned.sortedByCoord.out.bam",
-	"S11-10N_Aligned.sortedByCoord.out.bam",
-	"S6-3C_Aligned.sortedByCoord.out.bam",
-	"S8-4C_Aligned.sortedByCoord.out.bam",
-	"S12-10C_Aligned.sortedByCoord.out.bam"
-    ),
-    function(bam) file.path(working_directory, bam)
-  ),
+	c("S15-5N_Aligned.sortedByCoord.out.bam", "S9-20N_Aligned.sortedByCoord.out.bam", "S24-34N_Aligned.sortedByCoord.out.bam",
+	"S5-3N_Aligned.sortedByCoord.out.bam", "S7-4N_Aligned.sortedByCoord.out.bam", "S11-10N_Aligned.sortedByCoord.out.bam"),
+    function(bam) file.path(working_directory, bam)),
   coverage  = file.path(
-    working_directory, paste0(c("WT.N_1", "WT.N_2", "WT.N_3", "WT.C_1", "WT.C_2", "WT.C_3"), ".rds")))
+    working_directory,
+    paste0(c("abh1.N_1","abh1.N_2","abh1.N_3","abh1.C_1", "abh1.C_2", "abh1.C_3"), ".rds")))
 
 #- save sample information table ----------------------------------------------# 
-write.table(
-  sample_info, 
-  file.path(working_directory, "sample_info.txt")
-)
+write.table(sample_info, file.path(working_directory, "sample_info.txt"))
 
 #- display sample information table -------------------------------------------#
 knitr::kable(sample_info, row.names = FALSE)
@@ -64,10 +54,10 @@ stop <- genome$X2[genome$X1==i]
 data <- loadData(
   sampleInfo   = file.path(working_directory,"sample_info.txt"),
   locus        = list(seqid = i, chromStart = 1, chromEnd = stop),
-  referenceCondition = "WT.C",
+  referenceCondition = "abh1.C",
   isPairedEnd = TRUE,
   readLength = 150,
-  coverageType = "fivePrime",
+  coverageType = "threePrime",
   stranded = FALSE,
   strandSpecific = 0,
   fromBam    = TRUE,
@@ -92,16 +82,16 @@ SExp <- segmentation(
 	outputDirectory = working_directory,
 	nbThreadsFeatureCounts = nb_threads,
 	strandSpecific = 0,
-	read2pos = 5,
+	read2pos = 3,
 	isPairedEnd = TRUE
 )
 
 SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,]
 
 dds <- dea(
-	data              = data,
-	SExp              = SExp_10,
-	design            = ~condition,
+	data      = data,
+	SExp      = SExp_10,
+	design    = ~condition,
 	predicate = NULL,
 	significanceLevel = 0.01,
 	verbose = TRUE
@@ -121,5 +111,5 @@ gc()
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
 out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
 
-write_tsv(out, "WT-N_DERs_5p.bed", col_names=F)
+write_tsv(out, "abh1-N_DERs_3p.bed", col_names=F)
 

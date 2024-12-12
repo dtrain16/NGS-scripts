@@ -23,18 +23,16 @@ working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
-  sample    = c("abh1.N_1","abh1.N_2","abh1.N_3","WT.N_1","WT.N_2","WT.N_3"),
-  condition = c(rep("abh1.N", 3), rep( "WT.N", 3)),
+  sample    = c("abh1.N_1","abh1.N_2","abh1.N_3","abh1.C_1","abh1.C_2","abh1.C_3"),
+  condition = c(rep("abh1.N", 3), rep( "abh1.C", 3)),
   replicate = c(1:3,1:3),
   bam       = sapply(
 	c("S15-5N_Aligned.sortedByCoord.out.bam", "S9-20N_Aligned.sortedByCoord.out.bam", "S24-34N_Aligned.sortedByCoord.out.bam",
-	"S5-3N_Aligned.sortedByCoord.out.bam", "S7-4N_Aligned.sortedByCoord.out.bam", "S11-10N_Aligned.sortedByCoord.out.bam"),
+	"S16-5C_Aligned.sortedByCoord.out.bam", "S10-20C_Aligned.sortedByCoord.out.bam", "S25-34C_Aligned.sortedByCoord.out.bam"),
     function(bam) file.path(working_directory, bam)),
   coverage  = file.path(
     working_directory,
-    paste0(c("abh1.N_1","abh1.N_2","abh1.N_3","WT.N_1", "WT.N_2", "WT.N_3"), ".rds")
-  )
-)
+    paste0(c("abh1.N_1","abh1.N_2","abh1.N_3","abh1.C_1", "abh1.C_2", "abh1.C_3"), ".rds")))
 
 #- save sample information table ----------------------------------------------# 
 write.table(sample_info, file.path(working_directory, "sample_info.txt"))
@@ -56,7 +54,7 @@ stop <- genome$X2[genome$X1==i]
 data <- loadData(
   sampleInfo   = file.path(working_directory,"sample_info.txt"),
   locus        = list(seqid = i, chromStart = 1, chromEnd = stop),
-  referenceCondition = "WT.N",
+  referenceCondition = "abh1.C",
   isPairedEnd = TRUE,
   readLength = 150,
   coverageType = "fivePrime",
@@ -114,5 +112,5 @@ gc()
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
 out <- select(out_DERs, seqnames, start, end, derId, log2FoldChange, padj, baseMean)
 
-write_tsv(out, "abh1-NvsWT-N_DERs_5p_v1.bed", col_names=F)
+write_tsv(out, "abh1-N_DERs_5p.bed", col_names=F)
 
