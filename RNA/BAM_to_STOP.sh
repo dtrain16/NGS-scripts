@@ -47,7 +47,4 @@ awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.ba
 echo 'do maths'
 Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.5p.bed $scl
 
-echo 'cleaning'
-rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
-
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-# Calculate EJC stalling index based on 5'-P end counts upstream of exon-exon junctions
+# Calculate terminal stalling index for EJC binding based on 5'-P end counts upstream of exon-exon junctions
 
 ### CONDA environment is installed
 # conda create --name ngs_plots
@@ -21,19 +21,18 @@ fi
 smp=$1
 bedfile=$2
 
-echo ""
 echo "sample = $1"
 echo "bedfile = $2"
 
 echo "BAM to bed..."
 bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
-closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_ejc.5p.bed
-awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_ejc.5p.bed > ${smp%%.bam}_ejc_ESI.5p.bed 
+closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_exon.5p.bed
+awk -F$'\t' '$NF<1 && $NF>-51' ${smp%%.bam}_exon.5p.bed > ${smp%%.bam}_exon_ESI.5p.bed 
 
 echo 'do maths'
-Rscript /home/dganguly/scripts/RNA/ESI_calculation.r ${smp%%.bam}_ejc_ESI.5p.bed
+Rscript /home/dganguly/scripts/RNA/ESI_calculation.r ${smp%%.bam}_exon_ESI.5p.bed
 
 echo 'cleaning'
-rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_ejc.5p.bed
+rm -v ${smp%%.bam}_exon.5p.bed
 
 

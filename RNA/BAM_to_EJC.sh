@@ -44,7 +44,4 @@ awk -F$'\t' '$NF<2 && $NF>-2' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_1
 echo 'do maths'
 Rscript /home/dganguly/scripts/RNA/rel_expression_plots_ejc.r ${smp%%.bam}_${out}_10bp.5p.bed $scl
 
-echo 'cleaning'
-rm -v ${smp%%.bam}.5p.bed ${smp%%.bam}_${out}.5p.bed
-
 

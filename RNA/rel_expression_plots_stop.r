@@ -23,7 +23,7 @@ input <- read.delim(args[1],head=F) %>%
 stop_5p_sum <- group_by(input, V8) %>%
 	summarise(sum_rpm=sum(rpm), sum_reads=sum(V4))
 
-# normalise depth per nt by sum of reads across window
+# normalise depth per nt by sum of reads across window and filter for scaled read depth > 0
 stop_5p <- mutate(input, sum_rpm = stop_5p_sum$sum_rpm[match(V8, stop_5p_sum$V8)]) %>%
 	mutate(norm_counts = rpm/sum_rpm) %>%
 	subset(sum_rpm > 1)

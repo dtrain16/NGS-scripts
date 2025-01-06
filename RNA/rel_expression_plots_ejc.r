@@ -27,7 +27,7 @@ exon_3p_sum <- subset(input, pos < 0 & pos > -51) %>%
 	group_by(V8) %>%
 	summarise(sum_rpm=sum(rpm))
 
-# normalise depth per nt by sum of reads across 50 nt window and filter for raw read depth > 0
+# normalise depth per nt by sum of reads across 50 nt window and filter for scaled read depth > 0
 exon_3p <- subset(input, pos <= 0 & pos > -51) %>%
 	mutate(sum_rpm = exon_3p_sum$sum_rpm[match(V8, exon_3p_sum$V8)]) %>%
 	mutate(norm_counts = rpm/sum_rpm) %>%
