@@ -85,7 +85,7 @@ SExp <- counting(
 	data = data,
 	features = features,
 	featureCountsType = "fromBam",
-	featureCountsOtherParams = list(read2pos = 5),
+	featureCountsOtherParams = list(read2pos = 5, allowMultiOverlap=FALSE),
 	verbose = TRUE 
 )
 

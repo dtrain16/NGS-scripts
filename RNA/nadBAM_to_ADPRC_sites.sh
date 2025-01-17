@@ -44,12 +44,12 @@ echo "Combine + and -ADPRC samples to calculate per-nt NAD%"
 bedtools unionbedg -names plus minus -i ${smp_p%%.bam}.5p.bed ${smp_m%%.bam}.5p.bed | awk 'BEGIN {FS=OFS="\t"} {prop = $4 / ($4 + $5) } {print $0, prop}' > ${out}.nad.5p.bed
 
 echo "closestBed..."
-closestBed -D "b" -a ${out}.nad.5p.bed -b $bedfile > ${out}_${feature}_nad.5p.bed
-awk -F$'\t' '$NF<21 && $NF>-21' ${out}_${feature}_nad.5p.bed > ${out}_${feature}_20bp_nad.5p.bed 
+closestBed -D "a" -a ${out}.nad.5p.bed -b $bedfile > ${out}_${feature}_nad.5p.bed
+awk -F$'\t' '$NF<51 && $NF>-51' ${out}_${feature}_nad.5p.bed > ${out}_${feature}_20bp_nad.5p.bed 
 
 
 echo "Maths ..."
-#Rscript /home/dganguly/scripts/RNA/rel_expression_plots_nad.r ${out}_${feature}_20bp_nad.5p.bed
+Rscript /home/dganguly/scripts/RNA/rel_expression_plots_nad.r ${out}_${feature}_20bp_nad.5p.bed
 
 echo 'cleaning'
 rm -v ${smp_p%%.bam}.5p.bed ${smp_m%%.bam}.5p.bed ${out}.nad.5p.bed ${out}_${feature}_nad.5p.bed
