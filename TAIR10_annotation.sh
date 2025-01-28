@@ -57,18 +57,19 @@ mRNA <- subset(ens, ens$feature == 'mRNA') %>%
 
 write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-# mRNA annotation - protein coding and primary isoform only
-mRNA <- subset(ens, ens$feature == 'mRNA') %>%
+# mRNA annotation - protein coding + canonical isoform only
+mRNA_canon <- subset(ens, ens$feature == 'mRNA') %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
         mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
 	mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
-	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
-	subset(Isoform==1 & biotype == "protein_coding") %>%
-        select(c('seqname','start','end','Name','feature','strand'))
+	mutate(tag=getAttributeField(attributes, 'tag')) %>%
+	subset(tag == "Ensembl_canonical" & biotype == "protein_coding") %>%
+        select(seqname,start,end,Name,feature,strand) %>%
+	unique
 
-write.table(mRNA,'Arabidopsis_thaliana.TAIR10.59_mRNA_primary.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mRNA_canon,'Arabidopsis_thaliana.TAIR10.59_mRNA_canonical.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-## genome features
+## non-coding RNA
 ncrna <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncRNA" | feature == "rRNA" | feature == "snoRNA" | feature == "snRNA" | feature == "tRNA" ) %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
 	mutate(ID=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
@@ -79,13 +80,19 @@ ncrna <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncR
 
 write.table(ncrna,'Arabidopsis_thaliana.TAIR10.59_ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-# all exons (including ncRNAs) based on primary isoform
+# all exons based on canonical isoform
+mRNA_canon <- subset(ens, ens$feature == 'mRNA') %>%
+        mutate(ID=getAttributeField(attributes, 'ID')) %>%
+        mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+        mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
+        mutate(tag=getAttributeField(attributes, 'tag')) 
+
 exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
-        mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
-        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
-        subset(Isoform==1) %>% ## subset for primary transcript isoform
-        select(c('seqname','start','end','Name','feature','strand'))
+        mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
+        mutate(tag = mRNA_canon$tag[match(Transcript, mRNA_canon$Name)]) %>%
+	subset(tag == "Ensembl_canonical") %>% ## canonical isoform
+        select(seqname,start,end,Name,feature,strand)
 
 write.table(exon,'Arabidopsis_thaliana.TAIR10.59_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
@@ -95,37 +102,26 @@ exon1 <- mutate(exon, test = sapply(strsplit(Name, "\\."), function(l) l[3])) %>
 
 write.table(exon1,'Arabidopsis_thaliana.TAIR10.59_exon1.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
-# exon from mRNAs for primary isoform
+# exon from protein-coding mRNAs based on canonical isoform
 mRNA <- subset(ens, ens$feature == 'mRNA') %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
         mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
-	mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
-        subset(Isoform==1) ## subset for primary transcript isoform
+	mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
+	mutate(tag=getAttributeField(attributes, 'tag'))
 
 cd_exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
 	mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
         mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
         mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
-        mutate(Isoform=sapply(strsplit(Parent, "\\."), function(l) l[2])) %>%
-	subset(Isoform==1) %>% ## subset for primary transcript isoform
-	subset(Transcript %in% mRNA$Name) %>%
+	subset(Transcript %in% mRNA$Name) %>% ## subset of exons from annotated mRNAs
+	mutate(tag = mRNA$tag[match(Transcript, mRNA$Name)]) %>%
+	mutate(biotype = mRNA$biotype[match(Transcript, mRNA$Name)]) %>%
+	subset(tag == "Ensembl_canonical" & biotype == "protein_coding") %>% ## subset for canonical transcript isoform and protein-coding
         select(seqname,start,end,Name,feature,strand) %>%
 	unique
 
 write.table(cd_exon,'Arabidopsis_thaliana.TAIR10.59_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
-
-# exon from ncRNA
-nc_exon <- subset(ens, ens$feature == 'exon') %>%
-        mutate(Name=getAttributeField(attributes, 'Name')) %>%
-        mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
-        mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
-        mutate(Isoform=sapply(strsplit(Name, "\\."), function(l) l[2])) %>%
-        subset(Isoform==1) %>% ## subset for primary transcript isoform
-        subset(!(Transcript %in% mRNA$Name)) %>%
-        select(c('seqname','start','end','Name','score','strand'))
-
-write.table(nc_exon,'Arabidopsis_thaliana.TAIR10.59_exon-ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 ## CDS annotation
 
