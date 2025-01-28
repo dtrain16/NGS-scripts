@@ -112,9 +112,8 @@ out_DERs <- rbind(out_DERs,DERs)
 gc()
 
 out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
-out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, maxCooks, log2FoldChange, padj)
-out$cov <- sqrt(out$baseVar)/out$baseMean
-out <- subset(out, baseMean > 10 & cov < 1)
+out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, log2FoldChange, padj)
+out <- subset(out, baseMean > 10)
 
 write_tsv(out, "WT-N_DERs_3p.bed", col_names=F)
 
