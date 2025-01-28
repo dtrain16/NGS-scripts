@@ -93,6 +93,7 @@ SExp <- segmentation(
 	nbThreadsFeatureCounts = nb_threads,
 	strandSpecific = 0,
 	read2pos = 5,
+	#featureCountsOtherParams = list(allowMultiOverlap = FALSE)	
 	isPairedEnd = TRUE
 )
 
