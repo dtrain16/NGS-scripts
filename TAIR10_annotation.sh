@@ -222,6 +222,4 @@ bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.topl
 
 bedtools getfasta -fi $HOME/ref_seqs/TAIR10/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa -name -s -bed TAIR10_UTR.sorted.grouped.3p.bed -fo TAIR10_3pUTR.fa
 
-# clean up
-rm TAIR10_UTR.sorted.*.bed -v
 

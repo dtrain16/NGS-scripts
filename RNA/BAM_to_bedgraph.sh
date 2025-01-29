@@ -35,10 +35,14 @@ echo "feature = $5"
 echo "distance = $6"
 echo ""
 
+echo "calculate scaling factor"
+if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)"); fi
+if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)/2"); fi
+
 if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]] ; then 
 
 	echo "BAM to bed..."
-	bedtools genomecov -bg -split -ibam $smp > ${smp%%bam}bed
+	bedtools genomecov -bg -split -scale $scl -ibam $smp > ${smp%%bam}bed
 
 	echo 'bedtools for coverage across exons...'
 	closestBed -D "b" -a ${smp%%bam}bed -b $bedfile > ${smp%%.bam}_${out}.bed
@@ -67,12 +71,12 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "forward" ]] ; then
 	
 	echo "BAM to bedgraphs at exons ..."
 	# minus strand
-	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
+	bedtools genomecov -bg -split -scale -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
 	closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bam}_${out}.minus.bed
 	awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.bed > ${smp%%.bam}_${out}.${dis}bp.minus.bed
 
 	# plus strand
-        bedtools genomecov -bg -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
+        bedtools genomecov -bg -split -scale $scl -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
         closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bam}_${out}.plus.bed
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.bed > ${smp%%.bam}_${out}.${dis}bp.plus.bed
 
@@ -99,12 +103,12 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "reverse" ]] ; then
 	
 	echo "BAM to bedgraphs at exons ..."
 	# plus strand
-	bedtools genomecov -bg -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
+	bedtools genomecov -bg -split -scale $scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bam}_${out}.plus.bed
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.bed > ${smp%%.bam}_${out}.${dis}bp.plus.bed
         
 	# minus strand
-        bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
+        bedtools genomecov -bg -split -scale -$scl -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
         closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bam}_${out}.minus.bed
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.bed > ${smp%%.bam}_${out}.${dis}bp.minus.bed
 	
@@ -120,7 +124,7 @@ fi
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	
 	echo "BAM to bed..."
-        bedtools genomecov -bg -split -ibam $smp > ${smp%%bam}bed
+        bedtools genomecov -bg -split -scale $scl -ibam $smp > ${smp%%bam}bed
 
         echo 'bedtools for coverage across exons...'
         closestBed -D "b" -a ${smp%%bam}bed -b $bedfile > ${smp%%.bam}_${out}.bed
@@ -157,12 +161,12 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "forward" ]] ; then
 
 	echo "BAM to bedgraph at feature..."
 	# minus strand
-	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
+	bedtools genomecov -bg -split -scale -$scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bed
 	closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bam}_${out}.minus.bed	
 	awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.bed > ${smp%%.bam}_${out}.${dis}bp.minus.bed
 
 	# plus strand
-	bedtools genomecov -bg -split -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
+	bedtools genomecov -bg -split -scale $scl -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bam}_${out}.plus.bed
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.bed > ${smp%%.bam}_${out}.${dis}bp.plus.bed
 	
@@ -197,12 +201,12 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "reverse" ]] ; then
 
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bg -split -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
+	bedtools genomecov -bg -split -scale $scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bed
 	closestBed -D "b" -a ${smp%%bam}plus.bed -b $bedfile > ${smp%%.bam}_${out}.plus.bed
 	awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.plus.bed > ${smp%%.bam}_${out}.${dis}bp.plus.bed	
 
 	# minus strand
-	bedtools genomecov -bg -split -scale -1 -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
+	bedtools genomecov -bg -split -scale -$scl -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bed
 	closestBed -D "b" -a ${smp%%bam}minus.bed -b $bedfile > ${smp%%.bam}_${out}.minus.bed
         awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.minus.bed > ${smp%%.bam}_${out}.${dis}bp.minus.bed
 
