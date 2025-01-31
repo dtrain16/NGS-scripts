@@ -14,7 +14,7 @@ set -u
 
 if [ "$#" -lt 5 ]; then
 echo "Missing arguments!"
-echo "USAGE: BAM_to_STOP.sh <.BAM> <layout: SE/PE> <bedfile annotation> <feature name> <distance (upstream of stop)>"
+echo "USAGE: BAM_to_STOP.sh <.BAM> <layout: SE/PE> <bedfile annotation> <feature name> <distance>"
 echo "unstranded only (degradomes)"
 echo "EXAMPLE: BAM_to_STOP.sh col0_rep1.sorted.bam SE Arabidopsis_thaliana.TAIR10.54_stop.bed stop 40"
 echo "annotation should be start or stop codons (see TAIR_annotation.sh)"
@@ -42,7 +42,7 @@ if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 
 echo "BAM to bed..."
 bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
 closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
-awk -F$'\t' -v a=$dis '$NF<10 && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
+awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
 
 echo 'do maths'
 Rscript /home/dganguly/scripts/RNA/rel_expression_plots_stop.r ${smp%%.bam}_${out}_${dis}bp.5p.bed $scl

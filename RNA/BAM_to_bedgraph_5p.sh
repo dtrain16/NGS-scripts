@@ -48,6 +48,6 @@ echo 'do maths'
 Rscript /home/dganguly/scripts/RNA/rel_expression_plots.r ${smp%%.bam}_${out}_${dis}bp.5p.bed
 	
 echo 'cleaning'
-rm -v ${smp%%bam}5p.bed ${smp%%.bam}_${out}.5p.bed ${smp%%.bam}_${out}_${dis}bp.5p.bed
+rm -v ${smp%%.bam}_${out}.5p.bed
 
 
