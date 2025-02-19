@@ -81,7 +81,7 @@ ncrna <- subset(ens, feature == "lnc_RNA" | feature == "miRNA" | feature == "ncR
 write.table(ncrna,'Arabidopsis_thaliana.TAIR10.59_ncRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 # all exons based on canonical isoform
-mRNA_canon <- subset(ens, ens$feature == 'mRNA') %>%
+mRNA <- subset(ens, ens$feature == 'mRNA') %>%
         mutate(ID=getAttributeField(attributes, 'ID')) %>%
         mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
         mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
@@ -90,8 +90,9 @@ mRNA_canon <- subset(ens, ens$feature == 'mRNA') %>%
 exon <- subset(ens, ens$feature == 'exon') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
         mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
+	mutate(constitutive=getAttributeField(attributes, 'constitutive')) %>%
         mutate(tag = mRNA_canon$tag[match(Transcript, mRNA_canon$Name)]) %>%
-	subset(tag == "Ensembl_canonical") %>% ## canonical isoform
+	subset(tag == "Ensembl_canonical" | constitutive == 1) %>% ## canonical isoform & constitutively expressed
         select(seqname,start,end,Name,feature,strand)
 
 write.table(exon,'Arabidopsis_thaliana.TAIR10.59_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
@@ -114,10 +115,12 @@ cd_exon <- subset(ens, ens$feature == 'exon') %>%
 	mutate(Parent=getAttributeField(attributes, 'Parent')) %>%
         mutate(Gene=sapply(strsplit(Name, "\\."),function(l) l[1])) %>%
         mutate(Transcript=sapply(strsplit(Name, "\\."), function(l) paste(l[1],l[2], sep='.'))) %>%
+	mutate(constitutive=getAttributeField(attributes, 'constitutive')) %>%
 	subset(Transcript %in% mRNA$Name) %>% ## subset of exons from annotated mRNAs
 	mutate(tag = mRNA$tag[match(Transcript, mRNA$Name)]) %>%
 	mutate(biotype = mRNA$biotype[match(Transcript, mRNA$Name)]) %>%
-	subset(tag == "Ensembl_canonical" & biotype == "protein_coding") %>% ## subset for canonical transcript isoform and protein-coding
+	subset(biotype == "protein_coding") %>% ## subset for protein-coding
+	subset(tag == "Ensembl_canonical" | constitutive == 1) %>% ## subset for exons in canonical isoform or constitituvely expressed
         select(seqname,start,end,Name,feature,strand) %>%
 	unique
 
@@ -152,7 +155,7 @@ write.table(utr, "Arabidopsis_thaliana.TAIR10.59_UTR.bed", sep='\t', row.names=F
 utr_5 <- subset(ens, feature == "five_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
         mutate(id = sapply(strsplit(id, ":"), function(l) l[2])) %>%
-	mutate(Isoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
+	mutate(IsoformIsoform=sapply(strsplit(id, "\\."), function(l) l[2])) %>%
 	subset(Isoform==1) %>%
         select(seqname, start, end, id, feature, strand)
 

@@ -147,7 +147,7 @@ dds <- dea(data = data1,
 )
 
 #- extract DERs based on signifiance ----------------------------------------#
-DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
+DERs <- dds[SummarizedExperiment::mcols(dds)$rejectedHypotheses,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
 
 out_DERs_bdg <- rbind(out_DERs_bdg, DERs)
@@ -165,7 +165,7 @@ dds <- dea(data = data2,
 DERs <- dds[SummarizedExperiment::mcols(dds)$rejectedHypotheses,]
 DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
 
-out_DERs <- rbind(out_DERs,DERs)
+out_DERs_hmc <- rbind(out_DERs_hmc, DERs)
 
 }
 

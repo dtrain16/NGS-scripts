@@ -41,7 +41,7 @@ bedtools genomecov -bg -5 -scale $scl_p -ibam $smp_p > ${smp_p%%.bam}.5p.bed
 bedtools genomecov -bg -5 -scale $scl_m -ibam $smp_m > ${smp_m%%.bam}.5p.bed
 
 echo "Combine + and -ADPRC samples to calculate per-nt NAD%"
-bedtools unionbedg -names plus minus -i ${smp_p%%.bam}.5p.bed ${smp_m%%.bam}.5p.bed | awk 'BEGIN {FS=OFS="\t"} {prop = $4 / ($4 + $5) } prop > 0.5 {print $0, prop}' > ${out}.nad.5p.bed
+bedtools unionbedg -names plus minus -i ${smp_p%%.bam}.5p.bed ${smp_m%%.bam}.5p.bed | awk 'BEGIN {FS=OFS="\t"} {prop = $4 / ($4 + $5) } ($4 > 3) && (prop > 0.9) {print $0, prop}' > ${out}.nad.5p.bed
 
 #echo "closestBed..."
 #closestBed -D "a" -a ${out}.nad.5p.bed -b $bedfile > ${out}_${feature}_nad.5p.bed
