@@ -96,6 +96,11 @@ fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 
+	reads=$(samtools view -F 260 -c $smp)
+	frags=$(expr $reads / 2)
+	scaling_factor=$(bc <<< "scale=6;1000000/$frags")
+
+
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
 	# http://seqanswers.com/forums/showthread.php?t=29399
 	
