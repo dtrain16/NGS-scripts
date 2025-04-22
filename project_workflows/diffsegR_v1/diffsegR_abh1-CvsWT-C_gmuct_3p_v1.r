@@ -27,7 +27,7 @@ sample_info <- data.frame(
   condition = c(rep("abh1.C", 3), rep( "WT.C", 3)),
   replicate = c(1:3,1:3),
   bam       = sapply(
-        c("S16-5C_Aligned.sortedByCoord.out.bam", "S10-20C_Aligned.sortedByCoord.out.bam", "S25-34C_Aligned.sortedByCoord.out.bam",
+        c("S16-5C_Aligned.sortedByCoord.out.bam", "S33-9C_Aligned.sortedByCoord.out.bam", "S35-11C_Aligned.sortedByCoord.out.bam",
         "S6-3C_Aligned.sortedByCoord.out.bam", "S8-4C_Aligned.sortedByCoord.out.bam", "S12-10C_Aligned.sortedByCoord.out.bam"),
     function(bam) file.path(working_directory, bam)),
   coverage  = file.path(
