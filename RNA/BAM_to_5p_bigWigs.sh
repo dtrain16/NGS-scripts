@@ -122,7 +122,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 	
-	rm $smp ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}forward.bam ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam	
+	rm $smp ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam	
 
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
@@ -134,7 +134,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.5p.bg ${chrc_sizes}  ${smp%%bam}plus.5p.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.5p.bg ${chrc_sizes} ${smp%%bam}minus.5p.bigWig
 
-	rm ${smp%%bam}minus.5p.bg ${smp%%bam}plus.5p.bg
+	rm ${smp%%bam}minus.5p.bg ${smp%%bam}plus.5p.bg ${smp%%bam}forward.bam ${smp%%bam}reverse.bam
 
 fi
 
