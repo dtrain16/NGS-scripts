@@ -55,7 +55,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# extract reads from + and - strand
 	
 	reads=$(samtools view -F 260 -c $smp)
-	scaling_factor=$(bc <<< "scale=6;1000000/$reads")
+	scl=$(bc <<< "scale=6;1000000/$reads")
 
 	# reverse strand
 	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
@@ -79,17 +79,17 @@ fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
-reads=$(samtools view -F 260 -c $smp)
-frags=$(expr $reads / 2)
-scaling_factor=$(bc <<< "scale=6;1000000/$frags")
+	reads=$(samtools view -F 260 -c $smp)
+	frags=$(expr $reads / 2)
+	scaling_factor=$(bc <<< "scale=6;1000000/$frags")
 
-echo "BAM to bedgraph ..."
-# unstraned bedgraph of 5' read end coverage scaled to RPM
-bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
+	echo "BAM to bedgraph ..."
+	# unstraned bedgraph of 5' read end coverage scaled to RPM
+	bedtools genomecov -bga -5 -scale $scaling_factor -ibam $smp > ${smp%%bam}5p.bg
 
-# convert bedgraph to bigWig
-echo "bigWig ..."
-$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
+	# convert bedgraph to bigWig
+	echo "bigWig ..."
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 fi
 
@@ -98,7 +98,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 
 	reads=$(samtools view -F 260 -c $smp)
 	frags=$(expr $reads / 2)
-	scaling_factor=$(bc <<< "scale=6;1000000/$frags")
+	scl=$(bc <<< "scale=6;1000000/$frags")
 
 
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
