@@ -45,7 +45,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]]; then
 
 	# convert bedgraph to bigWig
 	echo "bigWig ..."
-	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 
 fi
@@ -72,7 +72,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.5p.bg ${chrc_sizes} ${smp%%bam}plus.5p.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.5p.bg ${chrc_sizes} ${smp%%bam}minus.5p.bigWig
 	
-	rm ${smp%%bam}reverse.bam ${smp%%bam}forward.bam ${smp%%bam}minus.5p.bg ${smp%%bam}plus.5p.bg
+	rm ${smp%%bam}reverse.bam ${smp%%bam}forward.bam
 
 fi
 
@@ -89,7 +89,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
 	# convert bedgraph to bigWig
 	echo "bigWig ..."
-	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 fi
 
@@ -105,20 +105,20 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# http://seqanswers.com/forums/showthread.php?t=29399
 	
 	# need sorted bam
-	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
+	samtools sort -@ 8 ${smp} -o ${smp%%bam}sorted.bam
 	smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
-	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
+	samtools view -@ 8 -f 99 -b $smp > ${smp%%bam}R1F.bam
 	# R2 reverse
-	samtools view -@ 2 -f 147 -b $smp > ${smp%%bam}R2R.bam
+	samtools view -@ 8 -f 147 -b $smp > ${smp%%bam}R2R.bam
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
 	# R1 reverse
-	samtools view -@ 2 -f 83 -b $smp > ${smp%%bam}R1R.bam
+	samtools view -@ 8 -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
-	samtools view -@ 2 -f 163 -b $smp > ${smp%%bam}R2F.bam
+	samtools view -@ 8 -f 163 -b $smp > ${smp%%bam}R2F.bam
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 	
@@ -134,7 +134,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.5p.bg ${chrc_sizes}  ${smp%%bam}plus.5p.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.5p.bg ${chrc_sizes} ${smp%%bam}minus.5p.bigWig
 
-	rm ${smp%%bam}minus.5p.bg ${smp%%bam}plus.5p.bg ${smp%%bam}forward.bam ${smp%%bam}reverse.bam
+	rm ${smp%%bam}forward.bam ${smp%%bam}reverse.bam
 
 fi
 
