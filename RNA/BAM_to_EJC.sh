@@ -16,7 +16,7 @@ if [ "$#" -lt 4 ]; then
 echo "Missing arguments!"
 echo "USAGE: BAM_to_EJC.sh <.BAM> <layout: SE/PE> <bedfile annotation> <feature name>"
 echo "treat as unstranded only (degradome)"
-echo "EXAMPLE: BAM_to_EJC.sh col0_rep1.sorted.bam PE Arabidopsis_thaliana.TAIR10.54_exon.bed exon"
+echo "EXAMPLE: BAM_to_EJC.sh col0_rep1.sorted.bam PE Arabidopsis_thaliana.TAIR10.54_exon-mRNA.bed exon-mRNA"
 exit 1
 fi
 
