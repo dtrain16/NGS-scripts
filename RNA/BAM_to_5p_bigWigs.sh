@@ -45,7 +45,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "unstranded" ]]; then
 
 	# convert bedgraph to bigWig
 	echo "bigWig ..."
-	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${chrc_sizes} ${smp%%bam}5p.bigWig
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 
 fi
@@ -89,7 +89,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 
 	# convert bedgraph to bigWig
 	echo "bigWig ..."
-	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${chrc_sizes} ${smp%%bam}5p.bigWig
+	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}5p.bg ${chrc_sizes} ${smp%%bam}5p.bigWig
 
 fi
 
