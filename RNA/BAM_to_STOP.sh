@@ -40,7 +40,7 @@ if [[ "$lay" == "SE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 
 if [[ "$lay" == "PE" ]] ; then scl=$(bc <<< "scale=6;1000000/$(samtools view -F 260 -c $smp)/2"); fi
 
 echo "BAM to bed..."
-bedtools genomecov -bg -5 -ibam $smp > ${smp%%.bam}.5p.bed
+bedtools genomecov -bg -5 -ibam $smp | sort -k1,1 -k2,2n > ${smp%%.bam}.5p.bed
 closestBed -D "b" -a ${smp%%.bam}.5p.bed -b $bedfile > ${smp%%.bam}_${out}.5p.bed
 awk -F$'\t' -v a=$dis '$NF<a && $NF>-a' ${smp%%.bam}_${out}.5p.bed > ${smp%%.bam}_${out}_${dis}bp.5p.bed 
 
