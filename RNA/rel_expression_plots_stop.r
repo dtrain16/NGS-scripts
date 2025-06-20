@@ -15,6 +15,8 @@ rpm_scale <- as.numeric(paste(args[2]))
 input <- read.delim(args[1],head=F) %>% 
 # Remove reads to plastid and mitochondria
 	subset(V1 != 'ChrM' & V1 != 'ChrC' & V1 != 'Mt' & V1 != 'Pt') %>%
+# remove reads from unannotated scafflds
+	subset(V5 != ".") %>% 
 # calculate position relative to first base of STOP or START codon
 	mutate(pos = ifelse(V10 == "+", V2-V6, V7-V3)) %>%
 	mutate(rpm = V4 * rpm_scale)
