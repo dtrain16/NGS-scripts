@@ -45,7 +45,27 @@ mrna <- subset(ens, ens$feature == 'mRNA') %>%
         select(seqname,start,end,Name,feature,strand) %>%
 	unique
 
-write.table(mRNA,'Oryza_sativa.IRGSP-1.0.61_mRNA_canonical.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mrna,'Oryza_sativa.IRGSP-1.0.61_mRNA_canonical.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+mrna <- subset(ens, ens$feature == 'mRNA') %>%
+        mutate(ID=getAttributeField(attributes, 'ID')) %>%
+        mutate(Name=sapply(strsplit(ID, ":"), function(l) l[2])) %>%
+        mutate(biotype=getAttributeField(attributes, 'biotype')) %>%
+        mutate(tag=getAttributeField(attributes, 'tag'))
+
+exon <- subset(ens, ens$feature == 'exon') %>%
+        mutate(Name=getAttributeField(attributes, 'Name')) %>%
+        mutate(Gene=sapply(strsplit(Name, "-"),function(l) l[1])) %>%
+        mutate(Transcript=sapply(strsplit(Name, "-"), function(l) paste(l[1],l[2], sep='-'))) %>%
+	mutate(constitutive=getAttributeField(attributes, 'constitutive')) %>%
+	mutate(tag = mrna$tag[match(Transcript, mrna$Name)]) %>%
+	mutate(biotype = mrna$biotype[match(Transcript, mrna$Name)]) %>%
+	subset(biotype == "protein_coding") %>% ## subset for protein-coding
+	subset(tag == "Ensembl_canonical" | constitutive == 1) %>% ## subset for exons in canonical isoform or constitituvely expressed
+        select(seqname,start,end,Name,feature,strand) %>%
+	unique
+
+write.table(exon,'Oryza_sativa.IRGSP-1.0.61_exon-mRNA.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 stop_mrna <- subset(ens, feature == "three_prime_UTR") %>%
         mutate(id = getAttributeField(attributes, 'Parent')) %>%
