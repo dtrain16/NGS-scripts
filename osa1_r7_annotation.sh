@@ -39,17 +39,14 @@ ens <- gffRead('osa1_r7.all_models.gff3')
 mrna <- subset(ens, ens$feature == 'mRNA') %>%
         mutate(Name=getAttributeField(attributes, 'Name')) %>%
         select(seqname,start,end,Name,feature,strand) %>%
-	unique %>%
-	mutate(seqname = gsub("Chr", "", seqname))
+	unique
 
-write.table(mrna,'osa_r7_mRNA_canonical.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(mrna,'osa1_r7_mRNA_canonical.bed', sep='\t', row.names=F, col.names=F, quote=F)
 
 mrna <- subset(ens, ens$feature == 'mRNA') %>%
-	mutate(Name=getAttributeField(attributes, 'Name')) %>%
-	mutate(seqname = gsub("Chr", "", seqname))
+	mutate(Name=getAttributeField(attributes, 'Name'))
 
 exon <- subset(ens, ens$feature == 'exon') %>%
-        mutate(seqname = gsub("Chr", "", seqname)) %>%
 	mutate(Name=getAttributeField(attributes, 'ID')) %>%
         mutate(Transcript=sapply(strsplit(Name, ":"),function(l) l[1])) %>%
 	mutate(Isoform=sapply(strsplit(Transcript, "\\."),function(l) l[2])) %>%
@@ -58,7 +55,22 @@ exon <- subset(ens, ens$feature == 'exon') %>%
         select(seqname,start,end,Name,feature,strand) %>%
         unique
 
-write.table(exon,'osa_r7_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
+write.table(exon,'osa1_r7_exon.bed', sep='\t', row.names=F, col.names=F, quote=F)
+
+stop_mrna <- subset(ens, feature == "three_prime_UTR") %>%
+        mutate(Name = getAttributeField(attributes, 'ID')) %>%
+        mutate(Transcript = sapply(strsplit(Name, ":"), function(l) l[1])) %>%
+        mutate(Isoform=sapply(strsplit(Transcript, "\\."),function(l) l[2])) %>%
+        subset(Isoform == 1) %>%
+        mutate(test1 = ifelse(strand == "-", end+1, start-1)) %>%
+        mutate(test2 = ifelse(strand == "-", end+3, start-3)) %>%
+        mutate(start = ifelse(strand == "-", test1, test2)) %>%
+        mutate(end = ifelse(strand == "-", test2, test1)) %>%
+        mutate(feature = "stop codon") %>%
+        select(seqname, start, end, Name, feature, strand)
+
+write.table(stop_mrna, "osa1_r7_stop.bed", sep='\t', row.names=F, col.names=F, quote=F)
+
 
 quit()
 n
