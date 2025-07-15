@@ -51,10 +51,10 @@ mkdir 1_read_trimming
 mv $fq 1_read_trimming
 cd 1_read_trimming
 
-## extract reads beginning with branch sequence (GCTTGTTGTG) with flexibility at first and last base
+## extract reads beginning with branch sequence (CTCTTCTTGT) with flexibility at first and last base
 if [[ $fq == *"fq.gz" ]]; 
-	then seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz;
-	else seqkit grep -j 12 -s -r -p "^.CTTGTTGT" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
+	then seqkit grep -j 12 -s -r -p "^CTCTTCTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz;
+	else seqkit grep -j 12 -s -r -p "^CTCTTCTTGT" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
 fi
 
 if [[ $fq == *"fq.gz" ]]; then fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branch=${fq%%.fastq*}_branch.fq.gz; fi
@@ -100,7 +100,7 @@ mkdir 2_align
 mv 1_read_trimming/${fileID}_processed_output.fq.gz 2_align/
 cd 2_align
 
-STAR --runThreadN 12 --outFilterMismatchNmax 0 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq.gz --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 12 --outFilterMismatchNmax 2 --alignEndsType EndToEnd --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq.gz --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
 
 mv ${fileID}_processed_output.fq.gz ../1_read_trimming/
 
