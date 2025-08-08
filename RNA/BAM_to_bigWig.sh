@@ -79,7 +79,7 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# reverse strand
 	samtools view -@ 2 -f 16 -b $smp > ${smp%%bam}reverse.bam
 	# forward strand
-	Samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
+	samtools view -@ 2 -F 16 -b $smp > ${smp%%bam}forward.bam
 	echo "BAM to stranded bedgraphs ..."
 	# reverse/plus bg
 	bedtools genomecov -bga -split -scale $scl -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
@@ -95,20 +95,19 @@ if [[ "$lay" == "SE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 fi
 
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
-	# need sorted bam
-	echo "sort by position"
-	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-	smp="${smp%%bam}sorted.bam"
+	
+	echo "sort by name"
+	samtools sort -@ 4 ${smp} -n -o ${smp%%bam}sortname.bam
+	smp="${smp%%bam}sortname.bam"
 	
 	echo "BAM to bedgraph ..."
 	# unstranded bedgraph
-	bedtools genomecov -bga -pc -split -scale $scl -ibam $smp > ${smp%%bam}bg
-
+	bedtools genomecov -bga -split -scale $scl -ibam $smp > ${smp%%bam}bg
+	
 	# bg to bigWig
 	echo "bigWig ..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}bg ${chrc_sizes} ${smp%%bam}bigWig
 
-	rm $smp
 
 fi
 
@@ -117,9 +116,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
 	# http://seqanswers.com/forums/showthread.php?t=29399
 	
-	# need sorted bam
-	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-	smp="${smp%%bam}sorted.bam"
+	#samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
+	#smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
 	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
@@ -128,6 +126,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
+	rm ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
+
 	# R1 reverse
 	samtools view -@ 2 -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
@@ -135,9 +135,11 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 
+	rm ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
+
 	echo "BAM to stranded bedgraph ..."
 	# minus strand
-	bedtools genomecov -bga -pc -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}minus.bg
 	# plus strand
 	bedtools genomecov -bga -pc -split -scale ${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}plus.bg
 
@@ -145,7 +147,7 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm $smp ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}forward.bam ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam ${smp%%bam}minus.bg ${smp%%bam}plus.bg
+	rm $smp ${smp%%bam}forward.bam ${smp%%bam}reverse.bam ${smp%%bam}minus.bg ${smp%%bam}plus.bg
 
 fi
 
@@ -154,9 +156,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
 	# http://seqanswers.com/forums/showthread.php?t=29399
 
-	# need sorted bam
-	samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-	smp="${smp%%bam}sorted.bam"
+	#samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
+	#smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
 	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
@@ -165,6 +166,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# FORWARD R1 read pairs
 	samtools merge -f ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
 
+        rm ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam
+
 	# R1 reverse
 	samtools view -@ 2 -f 83 -b $smp > ${smp%%bam}R1R.bam
 	# R2 forward
@@ -172,17 +175,19 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	# REVERSE R1 read pairs
 	samtools merge -f ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
 
+        rm ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam
+
 	echo "BAM to stranded bedgraph ..."
 	# plus strand
-	bedtools genomecov -bga -pc -split -scale ${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
+	bedtools genomecov -bga -split -scale ${scl} -ibam ${smp%%bam}reverse.bam > ${smp%%bam}plus.bg
 	# minus strand
-	bedtools genomecov -bga -pc -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
+	bedtools genomecov -bga -split -scale -${scl} -ibam ${smp%%bam}forward.bam > ${smp%%bam}minus.bg
 
 	echo "bigWigs..."
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}plus.bg ${chrc_sizes}  ${smp%%bam}plus.bigWig
 	$HOME/bin/kentUtils/bin/linux.x86_64/bedGraphToBigWig ${smp%%bam}minus.bg ${chrc_sizes} ${smp%%bam}minus.bigWig
 
-	rm $smp ${smp%%bam}forward.bam ${smp%%bam}R1F.bam ${smp%%bam}R2R.bam ${smp%%bam}reverse.bam ${smp%%bam}R1R.bam ${smp%%bam}R2F.bam ${smp%%bam}plus.bg ${smp%%bam}minus.bg
+	rm $smp ${smp%%bam}forward.bam ${smp%%bam}reverse.bam ${smp%%bam}plus*.bg ${smp%%bam}minus*.bg
 
 fi
 

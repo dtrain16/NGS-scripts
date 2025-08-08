@@ -54,10 +54,10 @@ fastqc -t 8 $fq 2>&1 | tee -a ${fileID}_logs_${dow}.log
 mv ${fq%%.fastq*}_fastqc* 1_fastqc
 
 echo "Read trimming... "
-# Trim_galore: remove adapters and low quality base-calls, set to small rna mode (min length 15 nt, max length 25 nt), generate fastqc report on trimmed reads.
+# Trim_galore: remove adapters and low quality base-calls, set to small rna mode (min length 15 nt, max length 24 nt), generate fastqc report on trimmed reads.
 mkdir 2_read_trimming
 cd 2_read_trimming
-trim_galore --small_rna --max_length 30 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
+trim_galore --small_rna --max_length 24 --fastqc --fastqc_args "-t 8" ../$fq 2>&1 | tee -a ../${fileID}_logs_${dow}.log
 
 cd ../
 mkdir 0_fastq
@@ -73,7 +73,7 @@ echo "Beginning alignment ..."
 if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
 
 # STAR alignment: 0 mismatches, min mapped length 18 nt, no more than 4 alignments
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 18 --outFilterMultimapNmax 4 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 21 --outFilterMultimapNmax 4 --alignEndsType EndToEnd --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
