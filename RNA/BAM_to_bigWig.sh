@@ -97,7 +97,7 @@ fi
 if [[ "$lay" == "PE" ]] && [[ "$str"  == "unstranded" ]] ; then
 	
 	echo "sort by name"
-	samtools sort -@ 4 ${smp} -n -o ${smp%%bam}sortname.bam
+	samtools sort -@ 8 ${smp} -n -o ${smp%%bam}sortname.bam
 	smp="${smp%%bam}sortname.bam"
 	
 	echo "BAM to bedgraph ..."
@@ -116,8 +116,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "stranded" ]] ; then
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
 	# http://seqanswers.com/forums/showthread.php?t=29399
 	
-	#samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-	#smp="${smp%%bam}sorted.bam"
+	samtools sort -@ 8 ${smp} -o ${smp%%bam}sorted.bam
+	smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
 	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
@@ -156,8 +156,8 @@ if [[ "$lay" == "PE" ]] && [[ "$str"  == "rev_stranded" ]] ; then
 	echo "Extract properly-paired read mates (+ flags 99/147; - flags 83/163) from paired-end BAM files"
 	# http://seqanswers.com/forums/showthread.php?t=29399
 
-	#samtools sort -@ 4 ${smp} -o ${smp%%bam}sorted.bam
-	#smp="${smp%%bam}sorted.bam"
+	samtools sort -@ 8 ${smp} -o ${smp%%bam}sorted.bam
+	smp="${smp%%bam}sorted.bam"
 
 	# R1 forward
 	samtools view -@ 2 -f 99 -b $smp > ${smp%%bam}R1F.bam
