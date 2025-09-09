@@ -30,8 +30,7 @@ sample_info <- data.frame(
 	sample    = c("dxo1.N_1","dxo1.N_2","dxo1.N_3","dxo1.N_4","WT.N_1","WT.N_2","WT.N_3","WT.N_4"),
 	condition = c(rep("dxo1.N", 4), rep( "WT.N", 4)),
 	replicate = c(1:4,1:4),
-	bam = sapply( c("S5-3N_Aligned.sortedByCoord.out.bam","S7-4N_Aligned.sortedByCoord.out.bam", "S11-10N_Aligned.sortedByCoord.out.bam", "S30-8N_Aligned.sortedByCoord.out.bam",
-"S36-45N_Aligned.sortedByCoord.out.bam","S37-46N_Aligned.sortedByCoord.out.bam","S38-47N_Aligned.sortedByCoord.out.bam","S39-48N_Aligned.sortedByCoord.out.bam"),
+	bam = sapply( c("S36-45N_Aligned.sortedByCoord.out.bam","S37-46N_Aligned.sortedByCoord.out.bam","S38-47N_Aligned.sortedByCoord.out.bam","S39-48N_Aligned.sortedByCoord.out.bam","S5-3N_Aligned.sortedByCoord.out.bam","S7-4N_Aligned.sortedByCoord.out.bam", "S11-10N_Aligned.sortedByCoord.out.bam", "S30-8N_Aligned.sortedByCoord.out.bam"),
         function(bam) file.path(working_directory, bam)),
         isPairedEnd = rep(TRUE, 8),
         strandSpecific = rep(1, 8)
@@ -55,13 +54,13 @@ stop <- genome$X2[genome$X1==i]
 
 ## import data on experiment
 data <- newExperiment(
-        sampleInfo = sample_info,
-	referenceCondition = "WT.N",
-        otherCondition  = "dxo1.N",
-        loci		= data.frame(seqid = i, chromStart = 1, chromEnd = stop),
-	coverage = working_directory,        
-	nbThreads  = nb_threads,
-        nbThreadsByLocus = nb_threads_locus
+        sampleInfo 		= sample_info,
+	referenceCondition 	= "WT.N",
+        otherCondition  	= "dxo1.N",
+        loci			= data.frame(seqid = i, chromStart = 1, chromEnd = stop),
+	coverage 		= working_directory,        
+	nbThreads  		= nb_threads,
+        nbThreadsByLocus 	= nb_threads_locus
 )
 
 print(data)
@@ -71,19 +70,19 @@ coverage(data = data, coverageType = "fivePrime", verbose = TRUE)
 
 ## transform coverage profile into per-base log2-FC and perform changepoint detection to define segments
 features <- segmentationLFC(
-	data  = data, 
-	modelSelectionType = "yao",
-	alpha = 2,
-	verbose = TRUE
+	data  			= data, 
+	modelSelectionType 	= "yao",
+	alpha 			= 3,
+	verbose 		= TRUE
 )
 
 ## Quantify expression of segments
 SExp <- counting(
-	data = data,
-	features = features,
-	featureCountsType = "fromBam",
+	data 			 = data,
+	features 		 = features,
+	featureCountsType 	 = "fromBam",
 	featureCountsOtherParams = list(read2pos = 5),
-	verbose = TRUE 
+	verbose 		 = TRUE 
 )
 
 ## subset to segments no longer than 10 nts
@@ -92,12 +91,11 @@ SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,
 counts_10 <- SummarizedExperiment::assay(SExp_10)
 
 # differential exprssion analysis
-
 dds <- dea(
-	SExp        = SExp_10, 
-	design      = ~condition,
+	SExp        	  = SExp_10, 
+	design      	  = ~condition,
 	significanceLevel = 0.01,
-	verbose = TRUE
+	verbose 	  = TRUE
 )
 
 #- extract DERs based on signifiance ----------------------------------------#
@@ -117,5 +115,5 @@ out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l
 out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, log2FoldChange, padj)
 out <- subset(out, baseMean > 10)
 
-write_tsv(out, "dxo1vsWT_Nuc_DERs_avg.bed", col_names=F)
+write_tsv(out, "dxo1vsWT_Nuc_DERs_5p.bed", col_names=F)
 
