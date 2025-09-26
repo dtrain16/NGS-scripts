@@ -73,7 +73,7 @@ zcat ${fq%%.fastq*}_trimmed.fq.gz | fastx_trimmer -z -l 20 -o ${fq%%.fastq}.20bp
 input=${fq%%.fastq}.20bp.trimmed.fq.gz
 
 # align using STAR allowing 0 mismatches
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --alignIntronMax 3000 --outFilterMismatchNmax 0 --outFilterScoreMinOverLread 0.75 --outFilterMatchNminOverLread 0.75 --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
