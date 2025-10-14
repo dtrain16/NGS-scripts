@@ -27,13 +27,14 @@ working_directory <- getwd()
 
 #- create sample information table --------------------------------------------#
 sample_info <- data.frame(
-	sample    = c("WT.N_1","WT.N_2","WT.N_3","WT.N_4","WT.N_5","dxo1.N_1","dxo1.N_2","dxo1.N_3","dxo1.N_4","dxo1.N_5","dxo1.N_6","dxo1.N_7"),
-	condition = c(rep("WT.N", 5), rep( "dxo1.N", 7)),
-	replicate = c(1:5,1:7),
-	bam = sapply( c("S5-3N_Aligned.sortedByCoord.out.bam","S7-4N_Aligned.sortedByCoord.out.bam", "S11-10N_Aligned.sortedByCoord.out.bam","S28-7N_Aligned.sortedByCoord.out.bam", "S30-8N_Aligned.sortedByCoord.out.bam", "S2-2N_Aligned.sortedByCoord.out.bam", "S17-6N_Aligned.sortedByCoord.out.bam", "S13-19N_Aligned.sortedByCoord.out.bam", "S36-45N_Aligned.sortedByCoord.out.bam","S37-46N_Aligned.sortedByCoord.out.bam","S38-47N_Aligned.sortedByCoord.out.bam","S39-48N_Aligned.sortedByCoord.out.bam"),
+	sample    = c("WT.A_1","WT.A_2", "N.A_1","N.A_2","WT.X_1","WT.X_2","N.X_1","N.X_2"),
+	condition = c(rep("ADPRC+", 4), rep( "ADPRC-", 4)),
+	replicate = c(1:4,1:4),
+	bam = sapply( c("WT_A_rep1_Aligned.sortedByCoord.out.bam", "WT_A_rep2_Aligned.sortedByCoord.out.bam", "N_A_rep1_Aligned.sortedByCoord.out.bam", "N_A_rep2_Aligned.sortedByCoord.out.bam",
+"WT_X_rep1_Aligned.sortedByCoord.out.bam", "WT_X_rep2_Aligned.sortedByCoord.out.bam","N_X_rep1_Aligned.sortedByCoord.out.bam","N_X_rep2_Aligned.sortedByCoord.out.bam"),
         function(bam) file.path(working_directory, bam)),
-        isPairedEnd = rep(TRUE, 12),
-        strandSpecific = rep(1, 12)
+        isPairedEnd = rep(FALSE, 8),
+        strandSpecific = rep(1, 8)
 )
 
 
@@ -44,7 +45,6 @@ genome <- read_tsv("~/ref_seqs/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.len",
 genome <- subset(genome, X1 != "Mt" & X1 != "Pt")
 
 ### setup comparisons and loop for each chromosome
-out_DERs <- NULL
 out_counts <- NULL
 
 for(i in unique(genome$X1)){
@@ -55,8 +55,8 @@ stop <- genome$X2[genome$X1==i]
 ## import data on experiment
 data <- newExperiment(
         sampleInfo 		= sample_info,
-	referenceCondition 	= "WT.N",
-        otherCondition  	= "dxo1.N",
+	referenceCondition 	= "ADPRC+",
+        otherCondition  	= "ADPRC-",
         loci			= data.frame(seqid = i, chromStart = 1, chromEnd = stop),
 	coverage 		= working_directory,        
 	nbThreads  		= nb_threads,
@@ -86,35 +86,18 @@ SExp <- counting(
 )
 
 ## subset to segments no longer than 10 nts
-SExp_10 <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 11,]
+SExp_filter <- SExp[as.data.frame(SummarizedExperiment::rowRanges(SExp))$width < 5,]
+
 ## extract counts for segments
-counts_10 <- SummarizedExperiment::assay(SExp_10)
+counts <- SummarizedExperiment::assay(SExp_filter)
 
-# differential exprssion analysis
-dds <- dea(
-	SExp        	  = SExp_10, 
-	design      	  = ~condition,
-	significanceLevel = 0.01,
-	verbose 	  = TRUE
-)
-
-#- extract DERs based on signifiance ----------------------------------------#
-DERs <- dds[SummarizedExperiment::mcols(dds)$DER,]
-DERs <- as.data.frame(SummarizedExperiment::rowRanges(DERs))
-
-out_counts <- rbind(out_counts,counts_10)
-out_DERs <- rbind(out_DERs,DERs)
+out_counts <- rbind(out_counts,counts)
 
 }
 
 #clear memory cache
 gc()
 
-write_tsv(as.data.frame(out_counts), "counts.tsv", col_names=T)
-
-out_DERs <- mutate(out_DERs, derId = sapply(strsplit(featureId, "_"), function(l) paste0(l[1],":",l[2],"-",l[3])))
-out <- select(out_DERs, seqnames, start, end, derId, baseMean, baseVar, stat, log2FoldChange, padj)
-out <- subset(out, baseMean > 10)
-
-write_tsv(out, "dxo1vsWT_Nuc_DERs_5p.bed", col_names=F)
+out_counts <- rownames_to_column(as.data.frame(out_counts), var="segment")
+write_tsv(out_counts, "Graft-NAD_WTvsnudt19_counts.tsv", col_names=T)
 
