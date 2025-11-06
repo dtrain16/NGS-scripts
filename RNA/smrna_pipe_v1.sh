@@ -73,7 +73,7 @@ echo "Beginning alignment ..."
 if [[ $fq == *"fq.gz" ]]; then input=${fq%%.fq*}_trimmed.fq*; else input=${fq%%.fastq*}_trimmed.fq*; fi
 
 # STAR alignment: 0 mismatches, min mapped length 18 nt, no more than 4 alignments
-STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 21 --outFilterMultimapNmax 4 --alignEndsType EndToEnd --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 8 --outFilterMismatchNmax 0 --outFilterMatchNmin 18 --outFilterMultimapNmax 4 --alignEndsType EndToEnd --genomeDir $index --readFilesCommand gunzip -c --readFilesIn $input --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate | tee -a  ../${fileID}_logs_${dow}.log
 
 echo "cleaning..."
 
