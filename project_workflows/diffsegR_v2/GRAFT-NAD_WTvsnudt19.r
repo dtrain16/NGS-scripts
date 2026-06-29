@@ -3,14 +3,14 @@
 # Installation
 #### Conda
 #conda create --name diffseg
-#conda install -n diffseg -c conda-forge r-tidyverse
-#conda install -n diffseg -c bioconda bioconductor-deseq2
-#conda install -n diffseg -c bioconda bioconductor-rsubread
-#conda install -n diffseg -c bioconda bioconductor-rtracklayer
-#conda install -n diffseg -c bioconda bioconductor-sparsematrixstats
-#conda install -n diffseg -c bioconda bioconductor-delayedmatrixstats
-#conda install -n diffseg -c conda-forge r-remotes
-#conda install -n diffseg bioconda::r-scatterplot3d
+#conda install -n diffseg r::r-tidyverse
+#conda install -n diffseg bioconda::bioconductor-deseq2
+#conda install -n diffseg bioconda::bioconductor-rsubread
+#conda install -n diffseg bioconda::bioconductor-rtracklayer
+#conda install -n diffseg bioconda::bioconductor-sparsematrixstats
+#conda install -n diffseg bioconda::bioconductor-delayedmatrixstats
+#conda install -n diffseg r::r-remotes
+#conda install -n diffseg r::r-scatterplot3d
 #conda activate diffseg
 #### R
 #remotes::install_github("sanssouci-org/sanssouci")

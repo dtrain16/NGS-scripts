@@ -18,12 +18,13 @@ set -eu
 # conda install -n graft_nad -c bioconda star
 # conda install -n graft_nad -c bioconda seqkit 
 # conda install -n graft_nad -c conda-forge r-tidyverse
-# conda install -n graft_nad conda-forge::parallel ## NOT IMPLEMENTED YET
+# conda install -n graft_nad conda-forge::parallel
 
-if [ "$#" -lt 3 ] || [ "$#" -gt 3 ]; then
+if [ "$#" -lt 4 ] || [ "$#" -gt 4 ]; then
 echo "Missing required arguments!"
-echo "USAGE: graft-nad-seq.sh <fastq R2> </path/to/index> <fileID>"
-echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir sample_rep1"
+echo "USAGE: graft-nad-seq.sh <fastq R2> </path/to/index> <fileID> <sample_type>"
+echo "EXAMPLE: graft-nad-seq.sh sample.fastq ~/ref_seqs/STAR/TAIR10/GenomeDir sample_rep1 Pos/Neg/Input"
+echo "Pos=ADPRC+, Neg=ADPRC-/mock, Input=Untreated"
 exit 1
 fi
 
@@ -31,6 +32,7 @@ fi
 fq=$1
 index=$2;
 fileID=$3;
+sample_type=$4
 dow=$(date +"%F-%H-%m")
 
 echo "##################"
@@ -51,10 +53,14 @@ mkdir 1_read_trimming
 mv $fq 1_read_trimming
 cd 1_read_trimming
 
-## extract reads beginning with branch sequence (CTCTTCTTGT) with flexibility at first and last base
+if [[ sample_type != "Input" ]]
+
+## extract reads beginning with branch sequence (CTCTTCTTGT) with flexibility at first base
 if [[ $fq == *"fq.gz" ]]; 
 	then seqkit grep -j 12 -s -r -p "^CTCTTCTTGT" $fq -o ${fq%%.fq*}_branch.fq.gz;
 	else seqkit grep -j 12 -s -r -p "^CTCTTCTTGT" $fq -o ${fq%%.fastq*}_branch.fq.gz; 
+fi
+
 fi
 
 if [[ $fq == *"fq.gz" ]]; then fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branch=${fq%%.fastq*}_branch.fq.gz; fi
@@ -62,9 +68,6 @@ if [[ $fq == *"fq.gz" ]]; then fq_branch=${fq%%.fq*}_branch.fq.gz; else fq_branc
 echo "Trim universal PCR primer sequence from 3' end of read"
 ## remove universal PCR primer at the 3' end of reads
 cutadapt -a "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT" -e 0.2 -m 25 -o "${fq_branch%%.fq*}_3p_trimmed.fq.gz" ${fq_branch} 2>&1 | tee -a ../${fileID}_logs_${dow}.log
-
-## old flags to trim 5' adapter sequences -- obselete
-#cutadapt -g "^NCTTGTTGTB" -g "^NCTTGTTGTBB" -g "^NCTTGTTGTBBB" -g  "^NCTTGTTGTBBBG"
 
 ## R script - trim reads first A at the 5' end of the read, retain read only if A within first 15 bp (10bp branch + flexibility for RT jumping)
 echo "Filter and trim reads based on A at 5' end"
@@ -100,7 +103,7 @@ mkdir 2_align
 mv 1_read_trimming/${fileID}_processed_output.fq.gz 2_align/
 cd 2_align
 
-STAR --runThreadN 12 --outFilterMismatchNmax 2 --alignEndsType EndToEnd --outFilterMultimapNmax 1 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq.gz --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate --limitBAMsortRAM 8000000000 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
+STAR --runThreadN 12 --limitBAMsortRAM 8000000000 --outFilterMismatchNmax 2 --alignEndsType EndToEnd --outFilterMultimapNmax 1 --alignIntronMax 3000 --genomeDir $index --readFilesCommand gunzip -c --readFilesIn ${fileID}_processed_output.fq.gz --outFileNamePrefix "${fileID}_" --outSAMtype BAM SortedByCoordinate 2>&1 | tee -a  ../${fileID}_logs_${dow}.log
 
 mv ${fileID}_processed_output.fq.gz ../1_read_trimming/
 
